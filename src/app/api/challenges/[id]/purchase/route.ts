@@ -18,7 +18,10 @@ async function generateWordImage(challengeId: string, wordIndex: number, modifie
     console.log(`Generating image for word ${wordIndex} in challenge ${challengeId}: "${modifiedPrompt}"`);
 
     // Generate image using fal.ai with Gemini Flash Image 2.5
-    const result = await fal.subscribe("fal-ai/gemini-25-flash-image", {
+    const result = await fal.subscribe(
+      "fal-ai/flux-1/schnell"
+      // "fal-ai/gemini-25-flash-image"
+      , {
       input: {
         prompt: `A realistic, high-quality image representing: ${modifiedPrompt}. Make it clear and visually appealing.`,
       },

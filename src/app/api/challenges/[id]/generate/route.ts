@@ -46,7 +46,10 @@ export async function POST(
     console.log(`Generating image for challenge ${params.id}: "${challenge.sentence}"`);
 
     // Generate image using fal.ai with Gemini Flash Image 2.5
-    const result = await fal.subscribe("fal-ai/gemini-25-flash-image", {
+    const result = await fal.subscribe(
+      "fal-ai/flux-1/schnell",
+      // "fal-ai/gemini-25-flash-image",
+       {
       input: {
         prompt: `A realistic, high-quality image representing: ${challenge.sentence}. Make it clear and visually appealing.`,
       },
