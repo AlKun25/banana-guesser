@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges, generateId } from '@/lib/data';
 import { Challenge } from '@/lib/types';
 
+// Function to sanitize challenge data for client
+function sanitizeChallengeForClient(challenge: Challenge) {
+  return {
+    ...challenge,
+    words: challenge.words.map(word => ({
+      ...word,
+      text: word.isPurchased ? '*'.repeat(word.text.length) : word.text.charAt(0) + '_'.repeat(word.text.length - 1)
+    }))
+  };
+}
+
 export async function GET() {
   try {
     const challenges = await readChallenges();
-    return NextResponse.json(challenges);
+    const sanitizedChallenges = challenges.map(sanitizeChallengeForClient);
+    return NextResponse.json(sanitizedChallenges);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
   }
@@ -54,7 +66,7 @@ export async function POST(request: NextRequest) {
     challenges.push(newChallenge);
     await writeChallenges(challenges);
 
-    return NextResponse.json(newChallenge, { status: 201 });
+    return NextResponse.json(sanitizeChallengeForClient(newChallenge), { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
   }
