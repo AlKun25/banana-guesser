@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { readChallenges } from '@/lib/data';
-import { Challenge } from '@/lib/types';
+import { sanitizeChallengeForClient } from '@/lib/challenge-utils';
 
 interface ChallengePageProps {
   params: Promise<{
@@ -12,19 +12,6 @@ interface ChallengePageProps {
   }>;
 }
 
-// Function to sanitize challenge data for client (same as API route)
-export function sanitizeChallengeForClient(challenge: Challenge) {
-  return {
-    ...challenge,
-    words: challenge.words.map(word => ({
-      ...word,
-      // text: (userId && word.guessedBy?.[userId]) 
-      // ? 
-      text: word.text  // Show full word if correctly guessed by this user
-      // : word.text // Keep original text - let components handle display logic
-    }))
-  };
-}
 
 async function getChallenge(id: string) {
   try {
@@ -133,7 +120,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <ChallengePageClient
-          challenge={sanitizeChallengeForClient(challenge, user.id)}
+          challenge={sanitizeChallengeForClient(challenge)}
           currentUserId={user.id}
           initialWallet={wallet}
         />

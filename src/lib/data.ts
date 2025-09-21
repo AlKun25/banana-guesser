@@ -1,13 +1,25 @@
-import { promises as fs } from 'fs';
-import path from 'path';
+import { Redis } from '@upstash/redis';
 import { Challenge, UserPurchase, UserWallet, WordAccess } from './types';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Redis client setup
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+// Redis keys
+const REDIS_KEYS = {
+  CHALLENGES: 'challenges',
+  PURCHASES: 'purchases', 
+  USERS: 'users'
+} as const;
 
 export async function readChallenges(): Promise<Challenge[]> {
   try {
-    const data = await fs.readFile(path.join(DATA_DIR, 'challenges.json'), 'utf-8');
-    return JSON.parse(data).map((c: any) => ({
+    const data = await redis.get(REDIS_KEYS.CHALLENGES);
+    if (!data) return [];
+    
+    return (data as any[]).map((c: any) => ({
       ...c,
       createdAt: new Date(c.createdAt),
       words: c.words.map((w: any) => ({
@@ -21,16 +33,15 @@ export async function readChallenges(): Promise<Challenge[]> {
 }
 
 export async function writeChallenges(challenges: Challenge[]): Promise<void> {
-  await fs.writeFile(
-    path.join(DATA_DIR, 'challenges.json'),
-    JSON.stringify(challenges, null, 2)
-  );
+  await redis.set(REDIS_KEYS.CHALLENGES, challenges);
 }
 
 export async function readPurchases(): Promise<UserPurchase[]> {
   try {
-    const data = await fs.readFile(path.join(DATA_DIR, 'purchases.json'), 'utf-8');
-    return JSON.parse(data).map((p: any) => ({
+    const data = await redis.get(REDIS_KEYS.PURCHASES);
+    if (!data) return [];
+    
+    return (data as any[]).map((p: any) => ({
       ...p,
       purchaseTime: new Date(p.purchaseTime),
       accessExpiresAt: new Date(p.accessExpiresAt)
@@ -41,16 +52,15 @@ export async function readPurchases(): Promise<UserPurchase[]> {
 }
 
 export async function writePurchases(purchases: UserPurchase[]): Promise<void> {
-  await fs.writeFile(
-    path.join(DATA_DIR, 'purchases.json'),
-    JSON.stringify(purchases, null, 2)
-  );
+  await redis.set(REDIS_KEYS.PURCHASES, purchases);
 }
 
 export async function readUsers(): Promise<UserWallet[]> {
   try {
-    const data = await fs.readFile(path.join(DATA_DIR, 'users.json'), 'utf-8');
-    return JSON.parse(data).map((u: any) => ({
+    const data = await redis.get(REDIS_KEYS.USERS);
+    if (!data) return [];
+    
+    return (data as any[]).map((u: any) => ({
       ...u,
       createdAt: new Date(u.createdAt)
     }));
@@ -60,10 +70,7 @@ export async function readUsers(): Promise<UserWallet[]> {
 }
 
 export async function writeUsers(users: UserWallet[]): Promise<void> {
-  await fs.writeFile(
-    path.join(DATA_DIR, 'users.json'),
-    JSON.stringify(users, null, 2)
-  );
+  await redis.set(REDIS_KEYS.USERS, users);
 }
 
 export async function getActiveWordAccess(challengeId: string, wordIndex: number): Promise<WordAccess | null> {

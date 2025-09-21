@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges } from '@/lib/data';
-import { sanitizeChallengeForClient } from '@/app/challenge/[id]/page';
+import { sanitizeChallengeForClient } from '@/lib/challenge-utils';
 
 
 export async function GET(

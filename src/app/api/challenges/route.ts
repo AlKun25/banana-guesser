@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges, generateId } from '@/lib/data';
 import { Challenge } from '@/lib/types';
 import { canAffordCredits, burnUserCredits } from '@/lib/stackauth-credits';
-import { sanitizeChallengeForClient } from '@/app/challenge/[id]/page';
+import { sanitizeChallengeForClient } from '@/lib/challenge-utils';
 
 
 export async function GET() {
