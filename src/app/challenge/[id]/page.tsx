@@ -13,14 +13,15 @@ interface ChallengePageProps {
 }
 
 // Function to sanitize challenge data for client (same as API route)
-function sanitizeChallengeForClient(challenge: Challenge, userId?: string) {
+export function sanitizeChallengeForClient(challenge: Challenge, userId?: string) {
   return {
     ...challenge,
     words: challenge.words.map(word => ({
       ...word,
-      text: word.isPurchased || (userId && word.guessedBy?.[userId]) 
-        ? word.text  // Show full word if purchased OR correctly guessed by this user
-        : word.text.charAt(0) + '_'.repeat(word.text.length - 1) // Show only first letter
+      // text: (userId && word.guessedBy?.[userId]) 
+      // ? 
+      text: word.text  // Show full word if correctly guessed by this user
+      // : word.text // Keep original text - let components handle display logic
     }))
   };
 }
@@ -29,11 +30,11 @@ async function getChallenge(id: string) {
   try {
     const challenges = await readChallenges();
     const challenge = challenges.find(c => c.id === id);
-    
+
     if (!challenge) {
       return null;
     }
-    
+
     return challenge; // Return full challenge data for server-side, client will handle sanitization
   } catch (error) {
     console.error('Failed to fetch challenge:', error);
@@ -54,20 +55,20 @@ async function getUserWallet(userId: string) {
 export default async function ChallengePage({ params }: ChallengePageProps) {
   const { id } = await params;
   const user = await stackServerApp.getUser();
-  
+
   if (!user) {
     redirect('/handler/sign-in');
   }
 
   const challenge = await getChallenge(id);
-  
+
   if (!challenge) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Challenge Not Found</h1>
           <p className="text-gray-600 mb-6">The challenge you're looking for doesn't exist or has been removed.</p>
-          <Link 
+          <Link
             href="/"
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 inline-flex items-center space-x-2"
           >
@@ -88,7 +89,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <Link 
+              <Link
                 href="/"
                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
               >
@@ -98,23 +99,23 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
               <div className="h-6 border-l border-gray-300"></div>
               <h1 className="text-xl font-bold text-gray-900">Challenge #{challenge.id.slice(0, 8)}</h1>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
                 <Wallet className="w-4 h-4 text-green-600" />
                 <span className="text-green-800 font-medium" data-wallet-amount>${wallet}</span>
               </div>
-              
+
               <div className="flex items-center space-x-2">
-                <img 
-                  src={user.profileImageUrl || '/default-avatar.png'} 
-                  alt={user.displayName || 'User'} 
+                <img
+                  src={user.profileImageUrl || '/default-avatar.png'}
+                  alt={user.displayName || 'User'}
                   className="w-8 h-8 rounded-full"
                 />
                 <span className="text-gray-700">{user.displayName}</span>
               </div>
-              
-              <a 
+
+              <a
                 href="/handler/account-settings"
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -127,7 +128,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ChallengePageClient 
+        <ChallengePageClient
           challenge={sanitizeChallengeForClient(challenge, user.id)}
           currentUserId={user.id}
           initialWallet={wallet}

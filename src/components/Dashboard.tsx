@@ -6,9 +6,11 @@ import { Plus, Wallet, RefreshCw } from 'lucide-react';
 import { Challenge } from '@/lib/types';
 import { ChallengePreview } from '@/components/ChallengePreview';
 import { CreateChallengeModal } from '@/components/CreateChallengeModal';
+import { useToast } from '@/components/ToastProvider';
 
 export function Dashboard() {
   const user = useUser();
+  const { showToast } = useToast();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [wallet, setWallet] = useState<number>(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -40,6 +42,7 @@ export function Dashboard() {
 
   const handleRefresh = () => {
     fetchChallenges(true);
+    showToast('Refreshing challenges...', 'info', 2000);
   };
 
   const fetchWallet = async () => {

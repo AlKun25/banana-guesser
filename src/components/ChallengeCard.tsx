@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Challenge } from '@/lib/types';
 import { Clock, DollarSign, Eye, Trophy, Timer, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useToast } from './ToastProvider';
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -17,9 +18,9 @@ interface PurchasedWord {
 }
 
 export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChallengeUpdate }: ChallengeCardProps) {
+  const { showToast } = useToast();
   const [purchasedWords, setPurchasedWords] = useState<PurchasedWord[]>([]);
   const [purchasing, setPurchasing] = useState<number | null>(null);
-  const [message, setMessage] = useState('');
   const [imageError, setImageError] = useState(false);
   const [retryingImage, setRetryingImage] = useState(false);
   const [currentDisplayImage, setCurrentDisplayImage] = useState<string | null>(null);
@@ -56,7 +57,6 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
   const handleRetryImageGeneration = async () => {
     setRetryingImage(true);
     setImageError(false);
-    setMessage('');
 
     try {
       const response = await fetch(`/api/challenges/${challenge.id}/generate`, {
@@ -66,7 +66,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
       const data = await response.json();
 
       if (response.ok && data.imageUrl) {
-        setMessage('Image generated successfully! Please refresh the page to see it.');
+        showToast('Image generated successfully! Please refresh the page to see it.', 'success');
         setImageError(false);
       } else {
         throw new Error(data.details || data.error || 'Failed to generate image');
@@ -74,7 +74,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
 
     } catch (error) {
       setImageError(true);
-      setMessage(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setRetryingImage(false);
     }
@@ -85,7 +85,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     
     // Check if user already guessed this word correctly
     if (word.guessedBy?.[currentUserId]) {
-      setMessage('You already guessed this word correctly!');
+      showToast('You already guessed this word correctly!', 'info');
       return;
     }
     
@@ -95,7 +95,6 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
       ...prev,
       [wordIndex]: prev[wordIndex] || ''
     }));
-    setMessage('');
   };
 
   const handleUnlockWord = async (wordIndex: number) => {
@@ -107,7 +106,6 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     }
     
     setPurchasing(wordIndex);
-    setMessage('');
 
     try {
       const response = await fetch(`/api/challenges/${challenge.id}/purchase`, {
@@ -133,14 +131,14 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         wordLength: data.wordLength,
       }]);
 
-      setMessage(`Word unlocked! Generating hint image... Cost: $${data.cost}`);
+      showToast(`Word unlocked! Generating hint image... Cost: $${data.cost}`, 'success');
       onWalletUpdate();
 
       // Poll for image generation completion
       pollForWordImageCompletion(wordIndex);
 
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to unlock word');
+      showToast(error instanceof Error ? error.message : 'Failed to unlock word', 'error');
     } finally {
       setPurchasing(null);
     }
@@ -162,12 +160,12 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
             onChallengeUpdate?.();
             setCurrentDisplayImage(updatedChallenge.wordImages[wordIndex]);
             setShowingWordImage(wordIndex);
-            setMessage(`Word image generated! Showing for 5 seconds...`);
+            showToast(`Word image generated! Hover on the word to see the image`, 'success');
             return true; // Stop polling
           } else if (word.generationFailed) {
             // Update the challenge data to show failed state
             onChallengeUpdate?.();
-            setMessage(`Word image generation failed. You can still guess the word.`);
+            showToast(`Word image generation failed. You can still guess the word.`, 'error');
             return true; // Stop polling
           }
         }
@@ -188,7 +186,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
       if (completed || attempts >= maxAttempts) {
         clearInterval(pollInterval);
         if (attempts >= maxAttempts) {
-          setMessage(`Word image generation is taking longer than expected.`);
+          showToast(`Word image generation is taking longer than expected.`, 'info');
         }
       }
     }, 2000);
@@ -214,7 +212,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
       const data = await response.json();
 
       if (data.correct) {
-        setMessage(`🎉 ${data.message}`);
+        showToast(`🎉 ${data.message}`, 'success');
         onWalletUpdate();
         onChallengeUpdate?.(); // Refresh challenge data to show correct guess
         setEditingWordIndex(null);
@@ -222,14 +220,16 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         
         // If challenge is solved, show success message
         if (data.challengeSolved) {
-          setMessage(`🎉 ${data.message} Total solution: "${data.solution}"`);
+          showToast(`🎉 ${data.message} Total solution: "${data.solution}"`, 'success', 10000); // Show longer for win message
         }
       } else {
-        setMessage(data.message);
+        showToast(data.message, 'error');
+        // Clear the input field for incorrect guesses so user can try again
+        setWordGuesses(prev => ({ ...prev, [wordIndex]: '' }));
       }
 
     } catch (error) {
-      setMessage('Failed to submit word guess');
+      showToast('Failed to submit word guess', 'error');
     }
   };
 
@@ -351,7 +351,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     const isUnlocked = word.isPurchased || purchasedWord || word.isGenerating || word.imageReady || word.generationFailed;
     const displayText = isUnlocked 
       ? (purchasedWord ? '*'.repeat(purchasedWord.wordLength) : '*'.repeat(word.text.length))
-      : '_'.repeat(word.text.length);
+      : '*'.repeat(word.text.length);
 
     return (
       <span 
@@ -419,7 +419,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
           )}
           {hoveredWordIndex !== null && showingWordImage === null && (
             <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
-              Hover preview - Word {hoveredWordIndex + 1}
+              Image generated by removing Word {hoveredWordIndex + 1} from the sentence
             </div>
           )}
         </div>
@@ -525,12 +525,6 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
           </ul>
         </div>
 
-        {/* Status Messages */}
-        {message && (
-          <div className="mt-4 p-3 bg-blue-100 border border-blue-200 rounded-lg">
-            <p className="text-blue-800 text-sm">{message}</p>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -10,8 +10,13 @@ interface ChallengePreviewProps {
 }
 
 export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewProps) {
+  // Helper function to check if user guessed the word correctly
+  const isWordGuessedByUser = (word: any) => {
+    return word.guessedBy?.[currentUserId] === true;
+  };
+
   const getWordPreviewClass = (word: any, index: number) => {
-    const userGuessedCorrectly = word.guessedBy?.[currentUserId];
+    const userGuessedCorrectly = isWordGuessedByUser(word);
     
     // If user already guessed correctly, show blue (completed)
     if (userGuessedCorrectly) {
@@ -36,7 +41,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
   };
 
   const renderWordPreview = (word: any, index: number) => {
-    const userGuessedCorrectly = word.guessedBy?.[currentUserId];
+    const userGuessedCorrectly = isWordGuessedByUser(word);
     
     // Show actual word if user guessed it correctly
     if (userGuessedCorrectly) {
@@ -51,7 +56,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
     const isUnlocked = word.isPurchased || word.isGenerating || word.imageReady || word.generationFailed;
     const displayText = isUnlocked 
       ? '*'.repeat(word.text.length)
-      : '_'.repeat(word.text.length);
+      : '*'.repeat(word.text.length);
 
     return (
       <span key={index} className={getWordPreviewClass(word, index)}>
@@ -125,7 +130,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
         {/* Word Preview */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-900">Sentence Preview:</h3>
-          <div className="flex flex-wrap gap-1 text-sm">
+          <div className="flex flex-wrap text-sm row-gap-10 column-gap-1">
             {challenge.words.map((word, index) => (
               <span key={index}>
                 {renderWordPreview(word, index)}

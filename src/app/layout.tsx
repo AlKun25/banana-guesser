@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import { stackServerApp } from "../stack/server";
+import { ToastProvider } from "@/components/ToastProvider";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -29,9 +30,15 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      ><StackProvider app={stackServerApp}><StackTheme>
-        {children}
-      </StackTheme></StackProvider></body>
+      >
+        <StackProvider app={stackServerApp}>
+          <StackTheme>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </StackTheme>
+        </StackProvider>
+      </body>
     </html>
   );
 }

@@ -202,7 +202,12 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
                 min="1"
                 max="1000"
                 value={prizeAmount}
-                onChange={(e) => setPrizeAmount(Number(e.target.value))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Parse as number to remove leading zeros, but handle empty string
+                  const numValue = value === '' ? 0 : Number(value);
+                  setPrizeAmount(numValue);
+                }}
                 placeholder="10"
                 className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading || imageGenerating}

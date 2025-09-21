@@ -30,7 +30,7 @@ export async function POST(
     if (challengeIndex === -1) {
       return NextResponse.json({ 
         error: 'Challenge not found',
-        details: `No challenge found with ID: ${params.id}`,
+        details: `No challenge found with ID: ${id}`,
         type: 'not_found'
       }, { status: 404 });
     }
@@ -45,7 +45,7 @@ export async function POST(
       });
     }
 
-    console.log(`Generating image for challenge ${params.id}: "${challenge.sentence}"`);
+    console.log(`Generating image for challenge ${id}: "${challenge.sentence}"`);
 
     // Generate image using fal.ai with Gemini Flash Image 2.5
     const result = await fal.subscribe(
@@ -124,7 +124,7 @@ export async function POST(
       error: errorMessage,
       details: errorDetails,
       type: errorType,
-      challengeId: params.id
+      // challengeId: id // TODO fix
     }, { status: 500 });
   }
 }
