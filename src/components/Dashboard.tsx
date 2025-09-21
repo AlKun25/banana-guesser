@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useUser } from '@stackframe/stack';
 import { Plus, Wallet, RefreshCw } from 'lucide-react';
 import { Challenge } from '@/lib/types';
@@ -17,13 +17,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchChallenges();
-    if (user) {
-      fetchWallet();
-    }
-  }, [user]);
-
+  
   const fetchChallenges = async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
@@ -39,13 +33,13 @@ export function Dashboard() {
       setRefreshing(false);
     }
   };
-
+  
   const handleRefresh = () => {
     fetchChallenges(true);
     showToast('Refreshing challenges...', 'info', 2000);
   };
-
-  const fetchWallet = async () => {
+  
+  const fetchWallet = useCallback(async () => {
     if (!user) return;
     try {
       const response = await fetch(`/api/wallet/${user.id}`);
@@ -54,8 +48,15 @@ export function Dashboard() {
     } catch (error) {
       console.error('Failed to fetch wallet:', error);
     }
-  };
-
+  }, [user]);
+  
+  useEffect(() => {
+    fetchChallenges();
+    if (user) {
+      fetchWallet();
+    }
+  }, [user, fetchWallet]);
+  
   const handleChallengeCreated = (newChallenge: Challenge) => {
     setChallenges(prev => [newChallenge, ...prev]);
     setShowCreateModal(false);
@@ -145,10 +146,14 @@ export function Dashboard() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
+              <a 
+                href="/payments"
+                className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full hover:bg-green-200 transition-colors cursor-pointer"
+                title="Click to add credits"
+              >
                 <Wallet className="w-4 h-4 text-green-600" />
                 <span className="text-green-800 font-medium">${wallet}</span>
-              </div>
+              </a>
               
               <div className="flex items-center space-x-2">
                 <img 

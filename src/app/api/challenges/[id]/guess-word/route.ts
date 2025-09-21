@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges } from '@/lib/data';
-import { updateUserWallet } from '@/lib/wallet';
+import { addUserCredits } from '@/lib/stackauth-credits';
 
 export async function POST(
   request: NextRequest,
@@ -70,7 +70,7 @@ export async function POST(
         message = `🎉 Congratulations! You solved the entire challenge! You won $${totalReward}!`;
         
         // Award the prize to the winner
-        await updateUserWallet(userId, totalReward);
+        await addUserCredits(userId, totalReward);
       }
 
       await writeChallenges(challenges);

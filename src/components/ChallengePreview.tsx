@@ -15,7 +15,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
     return word.guessedBy?.[currentUserId] === true;
   };
 
-  const getWordPreviewClass = (word: any, index: number) => {
+  const getWordPreviewClass = (word: any) => {
     const userGuessedCorrectly = isWordGuessedByUser(word);
     
     // If user already guessed correctly, show blue (completed)
@@ -46,7 +46,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
     // Show actual word if user guessed it correctly
     if (userGuessedCorrectly) {
       return (
-        <span key={index} className={getWordPreviewClass(word, index)}>
+        <span key={index} className={getWordPreviewClass(word)}>
           {word.text}
         </span>
       );
@@ -59,7 +59,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
       : '*'.repeat(word.text.length);
 
     return (
-      <span key={index} className={getWordPreviewClass(word, index)}>
+      <span key={index} className={getWordPreviewClass(word)}>
         {displayText}
       </span>
     );
@@ -130,7 +130,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
         {/* Word Preview */}
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-900">Sentence Preview:</h3>
-          <div className="flex flex-wrap text-sm row-gap-10 column-gap-1">
+          <div className="flex flex-wrap text-sm gap-2 row-gap-10 column-gap-1">
             {challenge.words.map((word, index) => (
               <span key={index}>
                 {renderWordPreview(word, index)}

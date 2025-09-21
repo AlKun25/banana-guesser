@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges, readPurchases, writePurchases } from '@/lib/data';
-import { canAfford, updateUserWallet } from '@/lib/wallet';
+import { canAffordCredits, burnUserCredits } from '@/lib/stackauth-credits';
 import { UserPurchase } from '@/lib/types';
 import { fal } from "@fal-ai/client";
 
@@ -85,8 +85,8 @@ export async function POST(
     }
 
     // Check if user can afford the word
-    if (!(await canAfford(userId, WORD_PRICE))) {
-      return NextResponse.json({ error: 'Insufficient funds' }, { status: 400 });
+    if (!(await canAffordCredits(userId, WORD_PRICE))) {
+      return NextResponse.json({ error: 'Insufficient credits' }, { status: 400 });
     }
 
     const challenges = await readChallenges();
@@ -123,7 +123,10 @@ export async function POST(
     }
 
     // Process the purchase
-    await updateUserWallet(userId, -WORD_PRICE);
+    const success = await burnUserCredits(userId, WORD_PRICE);
+    if (!success) {
+      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
+    }
 
     // Create purchase record
     const purchase: UserPurchase = {

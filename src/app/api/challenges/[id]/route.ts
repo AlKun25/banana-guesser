@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges } from '@/lib/data';
-import { Challenge } from '@/lib/types';
 import { sanitizeChallengeForClient } from '@/app/challenge/[id]/page';
 
 
@@ -19,8 +18,7 @@ export async function GET(
     }
 
     // Try to get userId from headers for personalized word visibility
-    const userId = request.headers.get('x-user-id');
-    return NextResponse.json(sanitizeChallengeForClient(challenge, userId || undefined));
+    return NextResponse.json(sanitizeChallengeForClient(challenge));
   } catch (error) {
     console.error('Error in challenge route:', error);
     return NextResponse.json({ error: 'Failed to fetch challenge' }, { status: 500 });

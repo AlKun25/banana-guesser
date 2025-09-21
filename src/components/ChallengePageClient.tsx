@@ -16,16 +16,11 @@ export function ChallengePageClient({
   initialWallet 
 }: ChallengePageClientProps) {
   const [challenge, setChallenge] = useState<Challenge>(initialChallenge);
-  const [wallet, setWallet] = useState<number>(initialWallet);
+  const [wallet] = useState<number>(initialWallet);
 
-  const fetchWallet = async () => {
-    try {
-      const response = await fetch(`/api/wallet/${currentUserId}`);
-      const data = await response.json();
-      setWallet(data.wallet);
-    } catch (error) {
-      console.error('Failed to fetch wallet:', error);
-    }
+  const refreshCredits = () => {
+    // Credits will be updated automatically when user object refreshes
+    // This function is kept for compatibility with existing code
   };
 
   const fetchChallenge = async () => {
@@ -54,7 +49,7 @@ export function ChallengePageClient({
     <ChallengeCard 
       challenge={challenge}
       currentUserId={currentUserId}
-      onWalletUpdate={fetchWallet}
+      onWalletUpdate={refreshCredits}
       onChallengeUpdate={fetchChallenge}
     />
   );

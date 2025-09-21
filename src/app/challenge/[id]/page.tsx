@@ -13,7 +13,7 @@ interface ChallengePageProps {
 }
 
 // Function to sanitize challenge data for client (same as API route)
-export function sanitizeChallengeForClient(challenge: Challenge, userId?: string) {
+export function sanitizeChallengeForClient(challenge: Challenge) {
   return {
     ...challenge,
     words: challenge.words.map(word => ({
@@ -42,12 +42,12 @@ async function getChallenge(id: string) {
   }
 }
 
-async function getUserWallet(userId: string) {
+async function getUserCredits(userId: string) {
   try {
-    const { getUserWallet: getWallet } = await import('@/lib/wallet');
-    return await getWallet(userId);
+    const { getUserCredits: getCredits } = await import('@/lib/stackauth-credits');
+    return await getCredits(userId);
   } catch (error) {
-    console.error('Failed to fetch wallet:', error);
+    console.error('Failed to get user credits:', error);
     return 0;
   }
 }
@@ -67,7 +67,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Challenge Not Found</h1>
-          <p className="text-gray-600 mb-6">The challenge you're looking for doesn't exist or has been removed.</p>
+          <p className="text-gray-600 mb-6">The challenge you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           <Link
             href="/"
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 inline-flex items-center space-x-2"
@@ -80,7 +80,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
     );
   }
 
-  const wallet = await getUserWallet(user.id);
+  const wallet = await getUserCredits(user.id);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,10 +101,14 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full">
+              <a 
+                href="/payments"
+                className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full hover:bg-green-200 transition-colors cursor-pointer"
+                title="Click to add credits"
+              >
                 <Wallet className="w-4 h-4 text-green-600" />
                 <span className="text-green-800 font-medium" data-wallet-amount>${wallet}</span>
-              </div>
+              </a>
 
               <div className="flex items-center space-x-2">
                 <img

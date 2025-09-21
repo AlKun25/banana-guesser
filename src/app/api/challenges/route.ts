@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges, generateId } from '@/lib/data';
 import { Challenge } from '@/lib/types';
-import { canAfford, updateUserWallet } from '@/lib/wallet';
+import { canAffordCredits, burnUserCredits } from '@/lib/stackauth-credits';
 import { sanitizeChallengeForClient } from '@/app/challenge/[id]/page';
 
 
 export async function GET() {
   try {
     const challenges = await readChallenges();
-    const sanitizedChallenges = challenges.map(challenge => sanitizeChallengeForClient(challenge, undefined));
+    const sanitizedChallenges = challenges.map(challenge => sanitizeChallengeForClient(challenge));
     return NextResponse.json(sanitizedChallenges);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });
   }
 }
@@ -32,12 +32,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if creator can afford the prize
-    if (!(await canAfford(createdBy, prizeAmount))) {
-      return NextResponse.json({ error: 'Insufficient funds to create this challenge' }, { status: 400 });
+    if (!(await canAffordCredits(createdBy, prizeAmount))) {
+      return NextResponse.json({ error: 'Insufficient credits to create this challenge' }, { status: 400 });
     }
 
-    // Deduct prize amount from creator's wallet upfront
-    await updateUserWallet(createdBy, -prizeAmount);
+    // Deduct prize amount from creator's credits upfront
+    const success = await burnUserCredits(createdBy, prizeAmount);
+    if (!success) {
+      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
+    }
 
     // Parse words and identify purchasable ones
     const words = sentence.split(' ').map((word: string, index: number) => ({
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest) {
     }));
 
     // For hackathon: make every 3rd word purchasable (simplified logic)
-    words.forEach((word, index) => {
+    words.forEach((word: any, index: number) => {
       if (index % 3 === 2 && word.text.length > 3) {
         word.isPurchased = false; // This will be purchasable
       }
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
     await writeChallenges(challenges);
 
     return NextResponse.json(sanitizeChallengeForClient(newChallenge), { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to create challenge' }, { status: 500 });
   }
 }

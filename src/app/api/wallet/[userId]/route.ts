@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserWallet } from '@/lib/wallet';
+import { getUserCredits } from '@/lib/stackauth-credits';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
   try {
-    const wallet = await getUserWallet(params.userId);
-    return NextResponse.json({ wallet });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch wallet' }, { status: 500 });
+    const credits = await getUserCredits(params.userId);
+    return NextResponse.json({ wallet: credits }); // Keep 'wallet' key for backward compatibility
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch credits' }, { status: 500 });
   }
 }

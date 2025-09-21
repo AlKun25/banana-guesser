@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Challenge } from '@/lib/types';
-import { Clock, DollarSign, Eye, Trophy, Timer, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Clock, Eye, Trophy, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useToast } from './ToastProvider';
 
 interface ChallengeCardProps {
@@ -228,7 +228,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         setWordGuesses(prev => ({ ...prev, [wordIndex]: '' }));
       }
 
-    } catch (error) {
+    } catch {
       showToast('Failed to submit word guess', 'error');
     }
   };
