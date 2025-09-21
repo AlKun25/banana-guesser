@@ -10,7 +10,6 @@ fal.config({
 });
 
 const WORD_PRICE = 5; // $5 per word
-const ACCESS_DURATION = 20 * 1000; // 20 seconds in milliseconds
 
 // Background function to generate image for purchased word
 async function generateWordImage(challengeId: string, wordIndex: number, modifiedPrompt: string) {
@@ -108,32 +107,30 @@ export async function POST(
       return NextResponse.json({ error: 'Word already purchased' }, { status: 400 });
     }
 
-    // Check if there's already an active purchase for this word
+    // Check if this word has already been purchased
     const purchases = await readPurchases();
-    const now = new Date();
-    const activePurchase = purchases.find(p => 
+    const existingPurchase = purchases.find(p => 
       p.challengeId === params.id && 
-      p.wordIndex === wordIndex &&
-      p.accessExpiresAt > now
+      p.wordIndex === wordIndex
     );
 
-    if (activePurchase) {
+    if (existingPurchase) {
       return NextResponse.json({ 
-        error: 'Word is currently being accessed by another user',
-        expiresAt: activePurchase.accessExpiresAt
+        error: 'Word has already been purchased by someone else',
+        purchasedBy: existingPurchase.userId
       }, { status: 400 });
     }
 
     // Process the purchase
     await updateUserWallet(userId, -WORD_PRICE);
 
-    // Create purchase record with generating status
+    // Create purchase record
     const purchase: UserPurchase = {
       userId,
       challengeId: params.id,
       wordIndex,
-      purchaseTime: now,
-      accessExpiresAt: new Date(now.getTime() + ACCESS_DURATION)
+      purchaseTime: new Date(),
+      accessExpiresAt: new Date() // Not used anymore, but keeping for compatibility
     };
 
     purchases.push(purchase);
@@ -141,7 +138,7 @@ export async function POST(
 
     // Update word status to show it's being processed
     challenge.words[wordIndex].purchasedBy = userId;
-    challenge.words[wordIndex].purchaseTime = now;
+    challenge.words[wordIndex].purchaseTime = new Date();
     challenge.words[wordIndex].isGenerating = true;
     await writeChallenges(challenges);
 
@@ -157,7 +154,6 @@ export async function POST(
     return NextResponse.json({
       success: true,
       wordLength: word.text.length,
-      accessExpiresAt: purchase.accessExpiresAt,
       cost: WORD_PRICE,
       status: 'generating'
     });

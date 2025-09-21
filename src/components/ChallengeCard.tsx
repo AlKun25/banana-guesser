@@ -8,18 +8,16 @@ interface ChallengeCardProps {
   challenge: Challenge;
   currentUserId: string;
   onWalletUpdate: () => void;
+  onChallengeUpdate?: () => void;
 }
 
 interface PurchasedWord {
   wordIndex: number;
   wordLength: number;
-  expiresAt: Date;
 }
 
-export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: ChallengeCardProps) {
+export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChallengeUpdate }: ChallengeCardProps) {
   const [purchasedWords, setPurchasedWords] = useState<PurchasedWord[]>([]);
-  const [guess, setGuess] = useState('');
-  const [showGuessInput, setShowGuessInput] = useState(false);
   const [purchasing, setPurchasing] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [imageError, setImageError] = useState(false);
@@ -27,16 +25,10 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
   const [currentDisplayImage, setCurrentDisplayImage] = useState<string | null>(null);
   const [hoveredWordIndex, setHoveredWordIndex] = useState<number | null>(null);
   const [showingWordImage, setShowingWordImage] = useState<number | null>(null);
+  const [editingWordIndex, setEditingWordIndex] = useState<number | null>(null);
+  const [wordGuesses, setWordGuesses] = useState<Record<number, string>>({});
 
-  // Timer effect for purchased words
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      setPurchasedWords(prev => prev.filter(pw => pw.expiresAt > now));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // No timer needed anymore - purchases are permanent until guessed
 
   // Check if image generation might have failed (no image after some time)
   useEffect(() => {
@@ -88,10 +80,31 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
     }
   };
 
-  const handleWordClick = async (wordIndex: number) => {
-    if (challenge.words[wordIndex].isPurchased || 
-        challenge.words[wordIndex].isGenerating || 
-        purchasing === wordIndex) return;
+  const handleWordClick = (wordIndex: number) => {
+    const word = challenge.words[wordIndex];
+    
+    // Check if user already guessed this word correctly
+    if (word.guessedBy?.[currentUserId]) {
+      setMessage('You already guessed this word correctly!');
+      return;
+    }
+    
+    // Start editing this word (inline typing)
+    setEditingWordIndex(wordIndex);
+    setWordGuesses(prev => ({
+      ...prev,
+      [wordIndex]: prev[wordIndex] || ''
+    }));
+    setMessage('');
+  };
+
+  const handleUnlockWord = async (wordIndex: number) => {
+    const word = challenge.words[wordIndex];
+    
+    // Check if already purchased/unlocked
+    if (word.isPurchased || purchasedWords.find(pw => pw.wordIndex === wordIndex) || word.isGenerating) {
+      return;
+    }
     
     setPurchasing(wordIndex);
     setMessage('');
@@ -114,21 +127,20 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
         throw new Error(data.error || 'Failed to purchase word');
       }
 
-      // Add to purchased words with timer
+      // Add to purchased words
       setPurchasedWords(prev => [...prev, {
         wordIndex,
         wordLength: data.wordLength,
-        expiresAt: new Date(data.accessExpiresAt),
       }]);
 
-      setMessage(`Word purchased! Generating image... Cost: $${data.cost}`);
+      setMessage(`Word unlocked! Generating hint image... Cost: $${data.cost}`);
       onWalletUpdate();
 
       // Poll for image generation completion
       pollForWordImageCompletion(wordIndex);
 
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to purchase word');
+      setMessage(error instanceof Error ? error.message : 'Failed to unlock word');
     } finally {
       setPurchasing(null);
     }
@@ -146,13 +158,16 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
           const word = updatedChallenge.words[wordIndex];
           
           if (word.imageReady && updatedChallenge.wordImages?.[wordIndex]) {
-            // Image is ready! Show it for 5 seconds
+            // Image is ready! Update the challenge data and show it for 5 seconds
+            onChallengeUpdate?.();
             setCurrentDisplayImage(updatedChallenge.wordImages[wordIndex]);
             setShowingWordImage(wordIndex);
             setMessage(`Word image generated! Showing for 5 seconds...`);
             return true; // Stop polling
           } else if (word.generationFailed) {
-            setMessage(`Word image generation failed. You can still see the word.`);
+            // Update the challenge data to show failed state
+            onChallengeUpdate?.();
+            setMessage(`Word image generation failed. You can still guess the word.`);
             return true; // Stop polling
           }
         }
@@ -179,65 +194,108 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
     }, 2000);
   };
 
-  const handleGuessSubmit = async () => {
-    if (!guess.trim()) return;
+  const handleWordGuessSubmit = async (wordIndex: number) => {
+    const guess = wordGuesses[wordIndex]?.trim();
+    if (!guess) return;
 
     try {
-      const response = await fetch(`/api/challenges/${challenge.id}/guess`, {
+      const response = await fetch(`/api/challenges/${challenge.id}/guess-word`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          guess: guess.trim(),
+          guess: guess,
           userId: currentUserId,
+          wordIndex: wordIndex,
         }),
       });
 
       const data = await response.json();
 
       if (data.correct) {
-        setMessage(`🎉 ${data.message} You earned $${data.reward}!`);
+        setMessage(`🎉 ${data.message}`);
         onWalletUpdate();
-        setShowGuessInput(false);
+        onChallengeUpdate?.(); // Refresh challenge data to show correct guess
+        setEditingWordIndex(null);
+        setWordGuesses(prev => ({ ...prev, [wordIndex]: '' }));
+        
+        // If challenge is solved, show success message
+        if (data.challengeSolved) {
+          setMessage(`🎉 ${data.message} Total solution: "${data.solution}"`);
+        }
       } else {
         setMessage(data.message);
       }
 
     } catch (error) {
-      setMessage('Failed to submit guess');
+      setMessage('Failed to submit word guess');
     }
-
-    setGuess('');
   };
 
+  const handleWordInputChange = (wordIndex: number, value: string) => {
+    setWordGuesses(prev => ({
+      ...prev,
+      [wordIndex]: value
+    }));
+  };
+
+  const handleWordInputKeyDown = (e: React.KeyboardEvent, wordIndex: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleWordGuessSubmit(wordIndex);
+    } else if (e.key === 'Escape') {
+      setEditingWordIndex(null);
+    }
+  };
+
+
   const getWordBoxClass = (word: any, index: number) => {
+    const purchasedWord = purchasedWords.find(pw => pw.wordIndex === index);
+    
     if (purchasing === index) {
       return "bg-yellow-300 text-yellow-800 px-2 py-1 rounded animate-pulse";
     }
     
-    if (word.isGenerating) {
-      return "bg-yellow-400 text-yellow-900 px-2 py-1 rounded animate-pulse";
+    // Show colors for purchased/unlocked words
+    if (purchasedWord || word.isPurchased || word.isGenerating || word.imageReady || word.generationFailed) {
+      const userGuessedCorrectly = word.guessedBy?.[currentUserId];
+      
+      // If user already guessed correctly, show blue (completed)
+      if (userGuessedCorrectly) {
+        return "bg-blue-500 text-blue-100 px-2 py-1 rounded cursor-default";
+      }
+      
+      if (purchasedWord) {
+        if (word.isGenerating || (!word.imageReady && !word.generationFailed)) {
+          // Yellow while generating image
+          return "bg-yellow-400 text-yellow-900 px-2 py-1 rounded animate-pulse cursor-text";
+        } else if (word.imageReady) {
+          // Green when image is ready (clickable to guess)
+          return "bg-green-500 text-green-900 px-2 py-1 rounded cursor-text hover:bg-green-600 transition-colors";
+        } else if (word.generationFailed) {
+          // Green with red accent for failed generation (still clickable to guess)
+          return "bg-green-400 text-green-900 px-2 py-1 rounded border-2 border-red-400 cursor-text hover:bg-green-500 transition-colors";
+        } else {
+          // Default green for purchased (clickable to guess)
+          return "bg-green-400 text-green-900 px-2 py-1 rounded cursor-text hover:bg-green-500 transition-colors";
+        }
+      } else {
+        // Green for any other purchased/unlocked state (clickable to guess)
+        return "bg-green-400 text-green-900 px-2 py-1 rounded cursor-text hover:bg-green-500 transition-colors";
+      }
     }
     
-    if (word.imageReady) {
-      return "bg-green-400 text-green-900 px-2 py-1 rounded cursor-pointer hover:bg-green-500 transition-colors";
-    }
-    
-    if (word.generationFailed) {
-      return "bg-orange-400 text-orange-900 px-2 py-1 rounded";
-    }
-    
-    if (word.isPurchased) {
-      return "bg-blue-400 text-blue-900 px-2 py-1 rounded";
-    }
-    
-    return "bg-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-400 transition-colors cursor-pointer";
+    return "bg-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-400 transition-colors cursor-text";
   };
 
   const handleWordHover = (wordIndex: number) => {
     const word = challenge.words[wordIndex];
-    if (word.imageReady && challenge.wordImages?.[wordIndex]) {
+    const purchasedWord = purchasedWords.find(pw => pw.wordIndex === wordIndex);
+    
+    // Show hover image for any green box that has an available word image
+    // This includes: purchased by current user, legacy purchased, or solved challenges
+    if (challenge.wordImages?.[wordIndex] && (purchasedWord || word.isPurchased || word.imageReady)) {
       setHoveredWordIndex(wordIndex);
       setCurrentDisplayImage(challenge.wordImages[wordIndex]);
     }
@@ -251,63 +309,86 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
   };
 
   const renderWord = (word: any, index: number) => {
-    // Check if word is currently purchased by current user
     const purchasedWord = purchasedWords.find(pw => pw.wordIndex === index);
+    const userGuessedCorrectly = word.guessedBy?.[currentUserId];
+    const isEditing = editingWordIndex === index;
+    const currentGuess = wordGuesses[index] || '';
     
-    if (word.isPurchased || purchasedWord || word.isGenerating || word.imageReady || word.generationFailed) {
-      const timeLeft = purchasedWord ? Math.ceil((purchasedWord.expiresAt.getTime() - new Date().getTime()) / 1000) : 0;
-      
-      // Show asterisks instead of actual word text
-      const displayText = purchasedWord 
-        ? '*'.repeat(purchasedWord.wordLength)
-        : '*'.repeat(word.text.length);
-      
+    // Show actual word if user guessed it correctly
+    if (userGuessedCorrectly) {
       return (
         <span 
           key={index} 
-          className="relative"
-          onMouseEnter={() => handleWordHover(index)}
-          onMouseLeave={handleWordLeave}
+          className="relative inline-block"
         >
-          <span className={getWordBoxClass(word, index)}>
-            {displayText}
+          <span className="bg-blue-500 text-blue-100 px-2 py-1 rounded cursor-default" style={{ minHeight: '2.25rem', display: 'inline-flex', alignItems: 'center' }}>
+            {word.text}
           </span>
-          {purchasedWord && timeLeft > 0 && (
-            <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-1 py-0.5 rounded-full">
-              {timeLeft}s
-            </span>
-          )}
-          {word.isGenerating && (
-            <span className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-1 py-0.5 rounded-full">
-              ⏳
-            </span>
-          )}
-          {word.imageReady && (
-            <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-1 py-0.5 rounded-full">
-              ✓
-            </span>
-          )}
         </span>
       );
     }
-    
-    if (purchasing === index) {
+
+    // Show input field if currently editing
+    if (isEditing) {
       return (
-        <span key={index} className="bg-yellow-300 text-yellow-800 px-2 py-1 rounded animate-pulse">
-          Purchasing...
+        <span key={index} className="relative inline-block">
+          <input
+            type="text"
+            value={currentGuess}
+            onChange={(e) => handleWordInputChange(index, e.target.value)}
+            onKeyDown={(e) => handleWordInputKeyDown(e, index)}
+            onBlur={() => setEditingWordIndex(null)}
+            className="bg-white border-2 border-blue-500 text-gray-900 px-2 py-1 rounded focus:outline-none"
+            style={{ minHeight: '2.25rem', width: `${Math.max(word.text.length * 0.6, 3)}em` }}
+            placeholder={`${word.text.length} letters`}
+            autoFocus
+          />
         </span>
       );
     }
-    
+
+    // Regular word display with unlock button
+    const isUnlocked = word.isPurchased || purchasedWord || word.isGenerating || word.imageReady || word.generationFailed;
+    const displayText = isUnlocked 
+      ? (purchasedWord ? '*'.repeat(purchasedWord.wordLength) : '*'.repeat(word.text.length))
+      : '_'.repeat(word.text.length);
+
     return (
-      <button
-        key={index}
-        onClick={() => handleWordClick(index)}
-        className="bg-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-400 transition-colors cursor-pointer"
-        title="Click to purchase word access ($5 for 20 seconds)"
+      <span 
+        key={index} 
+        className="relative inline-block group"
+        onMouseEnter={() => handleWordHover(index)}
+        onMouseLeave={handleWordLeave}
       >
-        {'_'.repeat(word.text.length)}
-      </button>
+        <span 
+          onClick={() => handleWordClick(index)}
+          className={getWordBoxClass(word, index)} 
+          style={{ minHeight: '2.25rem', display: 'inline-flex', alignItems: 'center', paddingRight: '1.5rem' }}
+        >
+          {displayText}
+        </span>
+        
+        {/* Unlock button */}
+        {!isUnlocked && purchasing !== index && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleUnlockWord(index);
+            }}
+            className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 transition-colors opacity-0 group-hover:opacity-100"
+            title="Unlock word hint ($5)"
+          >
+            🔓
+          </button>
+        )}
+        
+        {/* Loading indicator for purchasing */}
+        {purchasing === index && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full animate-spin">
+            <div className="w-2 h-2 bg-white rounded-full m-1"></div>
+          </div>
+        )}
+      </span>
     );
   };
 
@@ -327,7 +408,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
           <img 
             src={displayImage} 
             alt="Challenge" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain bg-gray-50"
             onError={() => setImageError(true)}
           />
           {showingWordImage !== null && (
@@ -415,56 +496,31 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate }: Chal
 
       {/* Action Section */}
       <div className="p-6 bg-gray-50">
-        {!challenge.solvedBy && (
-          <div className="space-y-4">
-            {!showGuessInput ? (
-              <button
-                onClick={() => setShowGuessInput(true)}
-                className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                Make a Guess
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={guess}
-                  onChange={(e) => setGuess(e.target.value)}
-                  placeholder="Enter your guess for the complete sentence..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  onKeyPress={(e) => e.key === 'Enter' && handleGuessSubmit()}
-                />
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleGuessSubmit}
-                    disabled={!guess.trim()}
-                    className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Submit Guess
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowGuessInput(false);
-                      setGuess('');
-                    }}
-                    className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+
+        {/* Prize Display */}
+        <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Trophy className="w-5 h-5 text-green-600" />
+              <h4 className="font-medium text-green-900">Challenge Prize</h4>
+            </div>
+            <div className="text-2xl font-bold text-green-700">${challenge.prizeAmount}</div>
           </div>
-        )}
+          <p className="text-sm text-green-600 mt-1">
+            Winner takes all! Solve all the words to claim the prize.
+          </p>
+        </div>
 
         {/* Game Instructions */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
           <h4 className="font-medium text-blue-900 mb-2">How to Play:</h4>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Click gray boxes to purchase word hints ($5 each, 20 seconds access)</li>
-            <li>• Yellow box = generating image without that word</li>
-            <li>• Green box = ready! Hover to preview the modified image</li>
-            <li>• Solve the complete sentence to win $50!</li>
+            <li>• Click any word to type your guess (Enter to submit, Esc to cancel)</li>
+            <li>• Hover words to see unlock button 🔓 - click to buy hint image ($5)</li>
+            <li>• Yellow asterisks = generating hint image</li>
+            <li>• Green asterisks = hint ready! Hover to preview image</li>
+            <li>• Blue words = correctly guessed</li>
+            <li>• Guess all words to win the full prize!</li>
           </ul>
         </div>
 

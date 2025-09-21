@@ -2,6 +2,7 @@ export interface Challenge {
   id: string;
   sentence: string;
   imageUrl: string;
+  prizeAmount: number; // Prize set by challenger and paid upfront
   wordImages?: Record<number, string>; // Store generated images for each purchased word
   words: Array<{
     text: string;
@@ -12,6 +13,7 @@ export interface Challenge {
     isGenerating?: boolean;
     imageReady?: boolean;
     generationFailed?: boolean;
+    guessedBy?: Record<string, boolean>; // userId -> true if correctly guessed
   }>;
   createdBy: string;
   solvedBy: string | null;

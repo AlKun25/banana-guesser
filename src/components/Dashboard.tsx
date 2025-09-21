@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@stackframe/stack';
 import { Plus, Wallet } from 'lucide-react';
 import { Challenge } from '@/lib/types';
-import { ChallengeCard } from './ChallengeCard';
-import { CreateChallengeModal } from './CreateChallengeModal';
-import { getUserWallet } from '@/lib/wallet';
+import { ChallengePreview } from '@/components/ChallengePreview';
+import { CreateChallengeModal } from '@/components/CreateChallengeModal';
 
 export function Dashboard() {
   const user = useUser();
@@ -132,11 +131,10 @@ export function Dashboard() {
                 {/* Challenge Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {challenges.map((challenge) => (
-                    <ChallengeCard 
+                    <ChallengePreview 
                       key={challenge.id} 
                       challenge={challenge}
                       currentUserId={user.id}
-                      onWalletUpdate={fetchWallet}
                     />
                   ))}
                 </div>

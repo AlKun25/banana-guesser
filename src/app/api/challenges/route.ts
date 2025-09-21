@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges, generateId } from '@/lib/data';
 import { Challenge } from '@/lib/types';
+import { canAfford, updateUserWallet } from '@/lib/wallet';
 
 // Function to sanitize challenge data for client
 function sanitizeChallengeForClient(challenge: Challenge) {
@@ -25,15 +26,27 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { sentence, createdBy } = await request.json();
+    const { sentence, createdBy, prizeAmount } = await request.json();
     
-    if (!sentence || !createdBy) {
+    if (!sentence || !createdBy || !prizeAmount) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     if (sentence.split(' ').length > 25) {
       return NextResponse.json({ error: 'Sentence too long (max 25 words)' }, { status: 400 });
     }
+
+    if (prizeAmount < 1) {
+      return NextResponse.json({ error: 'Prize amount must be at least $1' }, { status: 400 });
+    }
+
+    // Check if creator can afford the prize
+    if (!(await canAfford(createdBy, prizeAmount))) {
+      return NextResponse.json({ error: 'Insufficient funds to create this challenge' }, { status: 400 });
+    }
+
+    // Deduct prize amount from creator's wallet upfront
+    await updateUserWallet(createdBy, -prizeAmount);
 
     // Parse words and identify purchasable ones
     const words = sentence.split(' ').map((word: string, index: number) => ({
@@ -55,6 +68,7 @@ export async function POST(request: NextRequest) {
       id: generateId(),
       sentence,
       imageUrl: '', // Will be generated after creation
+      prizeAmount,
       words,
       createdBy,
       solvedBy: null,
