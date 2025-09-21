@@ -404,12 +404,13 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     
     if (displayImage) {
       return (
-        <div className="relative">
+        <div className="relative w-full" style={{ minHeight: '300px', maxHeight: '400px' }}>
           <img 
             src={displayImage} 
             alt="Challenge" 
-            className="w-full h-full object-contain bg-gray-50"
+            className="w-full h-auto max-h-full object-contain bg-gray-50 rounded-lg"
             onError={() => setImageError(true)}
+            style={{ maxHeight: '400px' }}
           />
           {showingWordImage !== null && (
             <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
@@ -427,7 +428,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
 
     if (imageError) {
       return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 text-gray-500">
+        <div className="w-full flex flex-col items-center justify-center bg-gray-100 text-gray-500" style={{ minHeight: '300px' }}>
           <AlertTriangle className="w-8 h-8 mb-2" />
           <p className="text-sm text-center mb-3">Image generation failed</p>
           <button
@@ -443,7 +444,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     }
 
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-500">
+      <div className="w-full flex items-center justify-center bg-gray-100 text-gray-500" style={{ minHeight: '300px' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
           <p className="text-sm">Generating image...</p>
@@ -476,7 +477,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         </div>
 
         {/* Challenge Image */}
-        <div className="w-full h-64 bg-gray-50 rounded-lg overflow-hidden mb-4">
+        <div className="w-full bg-gray-50 rounded-lg overflow-hidden mb-4" style={{ minHeight: '300px', maxHeight: '400px' }}>
           {renderImageSection()}
         </div>
 

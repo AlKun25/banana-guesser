@@ -4,9 +4,10 @@ import { updateUserWallet } from '@/lib/wallet';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { guess, userId, wordIndex } = await request.json();
     
     if (!userId || !guess?.trim() || wordIndex === undefined) {
@@ -14,7 +15,7 @@ export async function POST(
     }
 
     const challenges = await readChallenges();
-    const challengeIndex = challenges.findIndex(c => c.id === params.id);
+    const challengeIndex = challenges.findIndex(c => c.id === id);
     
     if (challengeIndex === -1) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
@@ -53,10 +54,9 @@ export async function POST(
       }
       word.guessedBy[userId] = true;
 
-      // Check if user has now guessed all words
+      // Check if user has now guessed ALL words to win the game
       const allWordsGuessed = challenge.words.every(w => 
-        !w.isPurchased || // Skip words that aren't purchasable
-        w.guessedBy?.[userId] // User has guessed this word
+        w.guessedBy?.[userId] === true // User must have guessed every single word
       );
 
       let message = `Correct! You guessed "${word.text}".`;

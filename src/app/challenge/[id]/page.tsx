@@ -13,12 +13,14 @@ interface ChallengePageProps {
 }
 
 // Function to sanitize challenge data for client (same as API route)
-function sanitizeChallengeForClient(challenge: Challenge) {
+function sanitizeChallengeForClient(challenge: Challenge, userId?: string) {
   return {
     ...challenge,
     words: challenge.words.map(word => ({
       ...word,
-      text: word.isPurchased ? '*'.repeat(word.text.length) : word.text.charAt(0) + '_'.repeat(word.text.length - 1)
+      text: word.isPurchased || (userId && word.guessedBy?.[userId]) 
+        ? word.text  // Show full word if purchased OR correctly guessed by this user
+        : word.text.charAt(0) + '_'.repeat(word.text.length - 1) // Show only first letter
     }))
   };
 }
@@ -32,7 +34,7 @@ async function getChallenge(id: string) {
       return null;
     }
     
-    return sanitizeChallengeForClient(challenge);
+    return challenge; // Return full challenge data for server-side, client will handle sanitization
   } catch (error) {
     console.error('Failed to fetch challenge:', error);
     return null;
@@ -126,7 +128,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <ChallengePageClient 
-          challenge={challenge}
+          challenge={sanitizeChallengeForClient(challenge, user.id)}
           currentUserId={user.id}
           initialWallet={wallet}
         />

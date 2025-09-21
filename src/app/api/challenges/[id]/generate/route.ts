@@ -9,9 +9,11 @@ fal.config({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     // Validate environment variables
     if (!process.env.FAL_KEY) {
       console.error('FAL_KEY environment variable is not set');
@@ -23,7 +25,7 @@ export async function POST(
     }
 
     const challenges = await readChallenges();
-    const challengeIndex = challenges.findIndex(c => c.id === params.id);
+    const challengeIndex = challenges.findIndex(c => c.id === id);
     
     if (challengeIndex === -1) {
       return NextResponse.json({ 

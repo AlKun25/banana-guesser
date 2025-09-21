@@ -74,9 +74,10 @@ async function generateWordImage(challengeId: string, wordIndex: number, modifie
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { wordIndex, userId } = await request.json();
     
     if (!userId || wordIndex === undefined) {
@@ -89,7 +90,7 @@ export async function POST(
     }
 
     const challenges = await readChallenges();
-    const challengeIndex = challenges.findIndex(c => c.id === params.id);
+    const challengeIndex = challenges.findIndex(c => c.id === id);
     
     if (challengeIndex === -1) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
@@ -110,7 +111,7 @@ export async function POST(
     // Check if this word has already been purchased
     const purchases = await readPurchases();
     const existingPurchase = purchases.find(p => 
-      p.challengeId === params.id && 
+      p.challengeId === id && 
       p.wordIndex === wordIndex
     );
 
@@ -127,7 +128,7 @@ export async function POST(
     // Create purchase record
     const purchase: UserPurchase = {
       userId,
-      challengeId: params.id,
+      challengeId: id,
       wordIndex,
       purchaseTime: new Date(),
       accessExpiresAt: new Date() // Not used anymore, but keeping for compatibility
@@ -136,7 +137,8 @@ export async function POST(
     purchases.push(purchase);
     await writePurchases(purchases);
 
-    // Update word status to show it's being processed
+    // Update word status to show it's been purchased and is being processed
+    challenge.words[wordIndex].isPurchased = true;
     challenge.words[wordIndex].purchasedBy = userId;
     challenge.words[wordIndex].purchaseTime = new Date();
     challenge.words[wordIndex].isGenerating = true;
@@ -149,7 +151,7 @@ export async function POST(
       .join(' ');
 
     // Start image generation in background
-    generateWordImage(params.id, wordIndex, modifiedPrompt);
+    generateWordImage(id, wordIndex, modifiedPrompt);
 
     return NextResponse.json({
       success: true,

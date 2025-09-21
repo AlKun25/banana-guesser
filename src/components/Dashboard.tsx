@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@stackframe/stack';
-import { Plus, Wallet } from 'lucide-react';
+import { Plus, Wallet, RefreshCw } from 'lucide-react';
 import { Challenge } from '@/lib/types';
 import { ChallengePreview } from '@/components/ChallengePreview';
 import { CreateChallengeModal } from '@/components/CreateChallengeModal';
@@ -13,6 +13,7 @@ export function Dashboard() {
   const [wallet, setWallet] = useState<number>(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchChallenges();
@@ -21,7 +22,10 @@ export function Dashboard() {
     }
   }, [user]);
 
-  const fetchChallenges = async () => {
+  const fetchChallenges = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    }
     try {
       const response = await fetch('/api/challenges');
       const data = await response.json();
@@ -30,7 +34,12 @@ export function Dashboard() {
       console.error('Failed to fetch challenges:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    fetchChallenges(true);
   };
 
   const fetchWallet = async () => {
@@ -47,6 +56,53 @@ export function Dashboard() {
   const handleChallengeCreated = (newChallenge: Challenge) => {
     setChallenges(prev => [newChallenge, ...prev]);
     setShowCreateModal(false);
+    
+    // Start polling for image generation updates for the new challenge
+    pollForChallengeImageGeneration(newChallenge.id);
+  };
+
+  const pollForChallengeImageGeneration = (challengeId: string) => {
+    const checkImageGeneration = async () => {
+      try {
+        const response = await fetch('/api/challenges');
+        const data = await response.json();
+        const updatedChallenge = data.find((c: Challenge) => c.id === challengeId);
+        
+        if (updatedChallenge && updatedChallenge.imageUrl) {
+          // Image is ready, update the challenges list
+          setChallenges(prev => 
+            prev.map(c => c.id === challengeId ? updatedChallenge : c)
+          );
+          return true; // Stop polling
+        }
+        
+        // Check if generation might have failed (after 60 seconds)
+        const challengeAge = new Date().getTime() - new Date(updatedChallenge?.createdAt || 0).getTime();
+        if (challengeAge > 60000) {
+          // Refresh challenges to get the latest status
+          setChallenges(prev => 
+            prev.map(c => c.id === challengeId ? (updatedChallenge || c) : c)
+          );
+          return true; // Stop polling
+        }
+      } catch (error) {
+        console.error('Error checking image generation:', error);
+      }
+      return false; // Continue polling
+    };
+
+    // Poll every 3 seconds for up to 2 minutes
+    let attempts = 0;
+    const maxAttempts = 40; // 2 minutes
+    
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      const completed = await checkImageGeneration();
+      
+      if (completed || attempts >= maxAttempts) {
+        clearInterval(pollInterval);
+      }
+    }, 3000);
   };
 
   if (!user) {
@@ -72,8 +128,17 @@ export function Dashboard() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Word Reveal Game</h1>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+                title="Refresh challenges"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="text-sm">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
             </div>
             
             <div className="flex items-center space-x-4">

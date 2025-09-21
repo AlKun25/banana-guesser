@@ -30,7 +30,11 @@ export function ChallengePageClient({
 
   const fetchChallenge = async () => {
     try {
-      const response = await fetch(`/api/challenges/${challenge.id}`);
+      const response = await fetch(`/api/challenges/${challenge.id}`, {
+        headers: {
+          'x-user-id': currentUserId
+        }
+      });
       const data = await response.json();
       setChallenge(data);
     } catch (error) {

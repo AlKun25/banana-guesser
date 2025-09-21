@@ -4,12 +4,14 @@ import { Challenge } from '@/lib/types';
 import { canAfford, updateUserWallet } from '@/lib/wallet';
 
 // Function to sanitize challenge data for client
-function sanitizeChallengeForClient(challenge: Challenge) {
+function sanitizeChallengeForClient(challenge: Challenge, userId?: string) {
   return {
     ...challenge,
     words: challenge.words.map(word => ({
       ...word,
-      text: word.isPurchased ? '*'.repeat(word.text.length) : word.text.charAt(0) + '_'.repeat(word.text.length - 1)
+      text: word.isPurchased || (userId && word.guessedBy?.[userId]) 
+        ? word.text  // Show full word if purchased OR correctly guessed by this user
+        : word.text.charAt(0) + '_'.repeat(word.text.length - 1) // Show only first letter
     }))
   };
 }

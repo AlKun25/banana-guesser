@@ -6,9 +6,10 @@ const WINNING_REWARD = 50; // $50 for solving a challenge
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { guess, userId } = await request.json();
     
     if (!userId || !guess?.trim()) {
@@ -16,7 +17,7 @@ export async function POST(
     }
 
     const challenges = await readChallenges();
-    const challengeIndex = challenges.findIndex(c => c.id === params.id);
+    const challengeIndex = challenges.findIndex(c => c.id === id);
     
     if (challengeIndex === -1) {
       return NextResponse.json({ error: 'Challenge not found' }, { status: 404 });
