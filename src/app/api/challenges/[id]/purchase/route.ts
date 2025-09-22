@@ -9,7 +9,7 @@ fal.config({
   credentials: process.env.FAL_KEY,
 });
 
-const WORD_PRICE = 5; // $5 per word
+const WORD_PRICE_CENTS = 2; // 2 cents per word
 
 // Background function to generate image for purchased word
 async function generateWordImage(challengeId: string, wordIndex: number, modifiedPrompt: string) {
@@ -85,7 +85,7 @@ export async function POST(
     }
 
     // Check if user can afford the word
-    if (!(await canAffordCredits(userId, WORD_PRICE))) {
+    if (!(await canAffordCredits(userId, WORD_PRICE_CENTS))) {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 400 });
     }
 
@@ -123,7 +123,7 @@ export async function POST(
     }
 
     // Process the purchase
-    const success = await burnUserCredits(userId, WORD_PRICE);
+    const success = await burnUserCredits(userId, WORD_PRICE_CENTS);
     if (!success) {
       return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
     }
@@ -159,7 +159,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       wordLength: word.text.length,
-      cost: WORD_PRICE,
+      cost: WORD_PRICE_CENTS / 100, // Convert cents to dollars for display
       status: 'generating'
     });
 

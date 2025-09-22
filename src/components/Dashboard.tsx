@@ -117,7 +117,7 @@ export function Dashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Welcome to Word Reveal Game</h1>
+          <h1 className="text-2xl font-bold mb-4">Welcome to Banana Guesser 🍌</h1>
           <p className="text-gray-600 mb-4">Please sign in to continue</p>
           <a 
             href="/handler/sign-in"
@@ -137,7 +137,7 @@ export function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-gray-900">Word Reveal Game</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Banana Guesser 🍌</h1>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
@@ -156,7 +156,7 @@ export function Dashboard() {
                 title="Click to add credits"
               >
                 <Wallet className="w-4 h-4 text-green-600" />
-                <span className="text-green-800 font-medium">${wallet}</span>
+                <span className="text-green-800 font-medium">${(wallet / 100).toFixed(2)}</span>
               </a>
               
               <div className="flex items-center space-x-2">
@@ -206,7 +206,7 @@ export function Dashboard() {
             ) : (
               <>
                 {/* Challenge Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
                   {challenges.map((challenge) => (
                     <ChallengePreview 
                       key={challenge.id} 

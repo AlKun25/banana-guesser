@@ -1,4 +1,4 @@
-# Word Reveal Game - PRD
+# Banana Guesser - PRD
 
 ## Product Overview
 A competitive word-guessing game where users buy temporary access to reveal hidden words in AI-generated images, race to solve complete sentences, and earn money by creating challenges.

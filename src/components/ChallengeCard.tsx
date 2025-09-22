@@ -26,6 +26,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
   const [currentDisplayImage, setCurrentDisplayImage] = useState<string | null>(null);
   const [hoveredWordIndex, setHoveredWordIndex] = useState<number | null>(null);
   const [showingWordImage, setShowingWordImage] = useState<number | null>(null);
+  const [previewingWordIndex, setPreviewingWordIndex] = useState<number | null>(null);
   const [editingWordIndex, setEditingWordIndex] = useState<number | null>(null);
   const [wordGuesses, setWordGuesses] = useState<Record<number, string>>({});
 
@@ -102,6 +103,17 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     
     // Check if already purchased/unlocked
     if (word.isPurchased || purchasedWords.find(pw => pw.wordIndex === wordIndex) || word.isGenerating) {
+      return;
+    }
+
+    // Show confirmation popup for mobile-friendly purchasing
+    const confirmed = window.confirm(
+      `Purchase hint for word ${wordIndex + 1}?\n\n` +
+      `Cost: $0.02\n` +
+      `This will generate an image after removing this word from the prompt.`
+    );
+    
+    if (!confirmed) {
       return;
     }
     
@@ -290,6 +302,11 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
   };
 
   const handleWordHover = (wordIndex: number) => {
+    // Don't trigger hover behavior if we're actively previewing a word
+    if (previewingWordIndex !== null) {
+      return;
+    }
+    
     const word = challenge.words[wordIndex];
     const purchasedWord = purchasedWords.find(pw => pw.wordIndex === wordIndex);
     
@@ -302,10 +319,34 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
   };
 
   const handleWordLeave = () => {
-    if (hoveredWordIndex !== null && showingWordImage === null) {
+    if (hoveredWordIndex !== null && showingWordImage === null && previewingWordIndex === null) {
       setHoveredWordIndex(null);
       setCurrentDisplayImage(null);
     }
+  };
+
+  const handlePreviewClick = (wordIndex: number) => {
+    const isCurrentlyPreviewing = previewingWordIndex === wordIndex;
+    
+    if (isCurrentlyPreviewing) {
+      // Stop previewing
+      setPreviewingWordIndex(null);
+      setCurrentDisplayImage(null);
+    } else {
+      // Start previewing this word
+      setPreviewingWordIndex(wordIndex);
+      setHoveredWordIndex(null); // Clear hover state
+      
+      if (challenge.wordImages && challenge.wordImages[wordIndex]) {
+        setCurrentDisplayImage(challenge.wordImages[wordIndex]);
+      }
+    }
+  };
+
+  const getWordWidth = (word: any) => {
+    // Calculate width based on word length: 0.75rem per character + 1rem padding
+    const baseWidth = Math.max(word.text.length * 0.75 + 2, 4.5); // minimum 4.5rem
+    return `${baseWidth}rem`;
   };
 
   const renderWord = (word: any, index: number) => {
@@ -313,6 +354,9 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     const userGuessedCorrectly = word.guessedBy?.[currentUserId];
     const isEditing = editingWordIndex === index;
     const currentGuess = wordGuesses[index] || '';
+    const hasPreviewImage = challenge.wordImages && challenge.wordImages[index];
+    const isUnlocked = word.isPurchased || purchasedWord || word.isGenerating || word.imageReady || word.generationFailed;
+    const wordWidth = getWordWidth(word);
     
     // Show actual word if user guessed it correctly
     if (userGuessedCorrectly) {
@@ -321,7 +365,16 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
           key={index} 
           className="relative inline-block"
         >
-          <span className="bg-green-500 text-green-100 px-2 py-1 rounded cursor-default" style={{ minHeight: '2.25rem', display: 'inline-flex', alignItems: 'center' }}>
+          <span 
+            className="bg-green-500 text-green-100 px-2 py-1 rounded cursor-default" 
+            style={{ 
+              minHeight: '2.25rem', 
+              width: wordWidth,
+              display: 'inline-flex', 
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
             {word.text}
           </span>
         </span>
@@ -331,15 +384,54 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     // Show input field if currently editing
     if (isEditing) {
       return (
-        <span key={index} className="relative inline-block">
+        <span 
+          key={index} 
+          className="relative inline-block group"
+        >
+          {/* Keep the same action button above while editing */}
+          {!isUnlocked ? (
+            /* Unlock button */
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUnlockWord(index);
+              }}
+              className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 transition-colors z-10"
+              title="Unlock word hint ($0.02)"
+            >
+              🔓
+            </button>
+          ) : hasPreviewImage ? (
+            /* Preview button */
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreviewClick(index);
+              }}
+              className={`absolute -top-8 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full text-xs transition-colors z-10 ${
+                previewingWordIndex === index 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+              title={previewingWordIndex === index ? 'Hide preview' : 'Preview image'}
+            >
+              👁️
+            </button>
+          ) : null}
+          
           <input
             type="text"
             value={currentGuess}
             onChange={(e) => handleWordInputChange(index, e.target.value)}
             onKeyDown={(e) => handleWordInputKeyDown(e, index)}
             onBlur={() => setEditingWordIndex(null)}
-            className="bg-white border-2 border-blue-500 text-gray-900 px-2 py-1 rounded focus:outline-none"
-            style={{ minHeight: '2.25rem', width: `${Math.max(word.text.length * 0.6, 3)}em` }}
+            className="bg-blue-100 text-gray-900 px-2 py-1 rounded focus:outline-none focus:bg-blue-200 focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 text-center"
+            style={{ 
+              minHeight: '2.25rem', 
+              width: wordWidth,
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
             placeholder={`${word.text.length} letters`}
             autoFocus
           />
@@ -347,9 +439,6 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
       );
     }
 
-    // Regular word display with unlock button
-    const isUnlocked = word.isPurchased || purchasedWord || word.isGenerating || word.imageReady || word.generationFailed;
-    
     // Use the sanitized word text directly - it's already been processed by the API
     // to show full text for correctly guessed words or purchased words
     const displayText = word.text;
@@ -361,27 +450,80 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         onMouseEnter={() => handleWordHover(index)}
         onMouseLeave={handleWordLeave}
       >
-        <span 
-          onClick={() => handleWordClick(index)}
-          className={getWordBoxClass(word, index)} 
-          style={{ minHeight: '2.25rem', display: 'inline-flex', alignItems: 'center', paddingRight: '1.5rem' }}
-        >
-          {displayText}
-        </span>
-        
-        {/* Unlock button */}
-        {!isUnlocked && purchasing !== index && (
+        {/* Action button above word - either unlock or preview */}
+        {!isUnlocked && purchasing !== index ? (
+          /* Unlock button */
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleUnlockWord(index);
             }}
-            className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 transition-colors opacity-0 group-hover:opacity-100"
-            title="Unlock word hint ($5)"
+            className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 transition-colors z-10"
+            title="Unlock word hint ($0.02)"
           >
             🔓
           </button>
-        )}
+        ) : isUnlocked && hasPreviewImage ? (
+          /* Preview button */
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePreviewClick(index);
+            }}
+            className={`absolute -top-8 left-1/2 transform -translate-x-1/2 w-6 h-6 rounded-full text-xs transition-colors z-10 ${
+              previewingWordIndex === index 
+                ? 'bg-orange-500 text-white' 
+                : 'bg-blue-500 text-white hover:bg-blue-600'
+            }`}
+            title={previewingWordIndex === index ? 'Hide preview' : 'Preview image'}
+          >
+            👁️
+          </button>
+        ) : null}
+        
+        <span 
+          onClick={() => handleWordClick(index)}
+          className={`${getWordBoxClass(word, index)} relative`} 
+          style={{ 
+            minHeight: '2.25rem', 
+            width: wordWidth,
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            justifyContent: 'center'
+          }}
+        >
+          {displayText}
+          
+          {/* X overlay when word image is being previewed */}
+          {previewingWordIndex === index && (
+            <div className="absolute inset-0 bg-red-500 bg-opacity-20 rounded">
+              {/* Diagonal line from top-left to bottom-right */}
+              <div 
+                className="absolute bg-red-600" 
+                style={{
+                  width: '2px',
+                  height: '141.42%', // sqrt(2) * 100% to cover diagonal
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%) rotate(45deg)',
+                  transformOrigin: 'center'
+                }}
+              ></div>
+              {/* Diagonal line from top-right to bottom-left */}
+              <div 
+                className="absolute bg-red-600" 
+                style={{
+                  width: '2px',
+                  height: '141.42%', // sqrt(2) * 100% to cover diagonal
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%) rotate(-45deg)',
+                  transformOrigin: 'center'
+                }}
+              ></div>
+            </div>
+          )}
+        </span>
         
         {/* Loading indicator for purchasing */}
         {purchasing === index && (
@@ -418,9 +560,9 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
               Word image (5s remaining)
             </div>
           )}
-          {hoveredWordIndex !== null && showingWordImage === null && (
+          {(hoveredWordIndex !== null || previewingWordIndex !== null) && showingWordImage === null && (
             <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
-              Image generated by removing Word {hoveredWordIndex + 1} from the sentence
+              Image generated by removing Word {(hoveredWordIndex ?? previewingWordIndex ?? 0) + 1} from the sentence
             </div>
           )}
         </div>
@@ -455,9 +597,9 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
       {/* Challenge Header */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <Eye className="w-5 h-5 text-blue-600" />
@@ -484,8 +626,8 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
 
         {/* Word Puzzle */}
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-gray-900">Guess the sentence:</h3>
-          <div className="flex flex-wrap gap-2 text-lg leading-relaxed">
+          <h3 className="text-lg font-semibold text-gray-900">Guess the prompt behind this image:</h3>
+          <div className="flex flex-wrap gap-2 text-lg leading-relaxed" style={{ paddingTop: '2rem' }}>
             {challenge.words.map((word, index) => (
               <span key={index}>
                 {renderWord(word, index)}
@@ -496,33 +638,45 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         </div>
       </div>
 
-      {/* Action Section */}
-      <div className="p-6 bg-gray-50">
+      {/* Action Section - Now fills remaining space */}
+      <div className="p-6 bg-gray-50 flex-grow">
 
         {/* Prize Display */}
-        <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Trophy className="w-5 h-5 text-green-600" />
-              <h4 className="font-medium text-green-900">Challenge Prize</h4>
+        {challenge.prizeAmount > 0 ? (
+          <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Trophy className="w-5 h-5 text-green-600" />
+                <h4 className="font-medium text-green-900">Challenge Prize</h4>
+              </div>
+              <div className="text-2xl font-bold text-green-700">${challenge.prizeAmount}</div>
             </div>
-            <div className="text-2xl font-bold text-green-700">${challenge.prizeAmount}</div>
+            <p className="text-sm text-green-600 mt-1">
+              Winner takes all! Solve all the words to claim the prize.
+            </p>
           </div>
-          <p className="text-sm text-green-600 mt-1">
-            Winner takes all! Solve all the words to claim the prize.
-          </p>
-        </div>
+        ) : (
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center space-x-2">
+              <Trophy className="w-5 h-5 text-blue-600" />
+              <h4 className="font-medium text-blue-900">No Prize Challenge</h4>
+            </div>
+            <p className="text-sm text-blue-600 mt-1">
+              This is a free challenge - solve it for fun and bragging rights!
+            </p>
+          </div>
+        )}
 
         {/* Game Instructions */}
         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
           <h4 className="font-medium text-blue-900 mb-2">How to Play:</h4>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Click any word to type your guess (Enter to submit, Esc to cancel)</li>
-            <li>• Hover words to see unlock button 🔓 - click to buy hint image ($5)</li>
+            <li>• Click unlock button 🔓 to buy a hint for $0.02, that is an image generated without that word</li>
             <li>• Yellow asterisks = generating hint image</li>
-            <li>• Blue asterisks = hint ready! Hover to preview image</li>
+            <li>• Blue asterisks = hint ready! Click 👁️ button to preview image</li>
             <li>• Green words = correctly guessed</li>
-            <li>• Guess all words to win the full prize!</li>
+            <li>• Guess all words to win{challenge.prizeAmount > 0 ? ' the full prize' : ' the challenge'}!</li>
           </ul>
         </div>
 

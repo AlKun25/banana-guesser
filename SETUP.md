@@ -1,4 +1,4 @@
-# Word Reveal Game - Setup Instructions
+# Banana Guesser - Setup Instructions
 
 ## Prerequisites
 - Node.js 18+ installed

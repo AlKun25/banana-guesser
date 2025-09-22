@@ -69,8 +69,9 @@ export async function POST(
         totalReward = challenge.prizeAmount;
         message = `🎉 Congratulations! You solved the entire challenge! You won $${totalReward}!`;
         
-        // Award the prize to the winner
-        await addUserCredits(userId, totalReward);
+        // Award the prize to the winner (convert dollars to cents for credit system)
+        const prizeAmountCents = Math.round(totalReward * 100);
+        await addUserCredits(userId, prizeAmountCents);
       }
 
       await writeChallenges(challenges);

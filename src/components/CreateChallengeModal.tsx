@@ -12,7 +12,7 @@ interface CreateChallengeModalProps {
 
 export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: CreateChallengeModalProps) {
   const [sentence, setSentence] = useState('');
-  const [prizeAmount, setPrizeAmount] = useState<number>(10);
+  const [prizeAmount, setPrizeAmount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [imageGenerating, setImageGenerating] = useState(false);
@@ -69,8 +69,8 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
       return;
     }
 
-    if (prizeAmount < 1) {
-      setError('Prize amount must be at least $1');
+    if (prizeAmount < 0) {
+      setError('Prize amount cannot be negative');
       return;
     }
 
@@ -95,6 +95,15 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
 
       if (!response.ok) {
         const data = await response.json();
+        
+        // Handle rate limiting specifically
+        if (response.status === 429 && data.rateLimited) {
+          const rateLimitMessage = data.error + 
+            (data.minuteRemaining !== undefined ? ` (${data.minuteRemaining} remaining this minute)` : '') +
+            (data.dayRemaining !== undefined ? ` (${data.dayRemaining} remaining today)` : '');
+          throw new Error(rateLimitMessage);
+        }
+        
         throw new Error(data.error || 'Failed to create challenge');
       }
 
@@ -192,14 +201,14 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
 
           <div className="mb-4">
             <label htmlFor="prizeAmount" className="block text-sm font-medium text-gray-700 mb-2">
-              Prize Amount (you pay upfront)
+              Prize Amount (optional - you pay upfront)
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
               <input
                 id="prizeAmount"
                 type="number"
-                min="1"
+                min="0"
                 max="1000"
                 value={prizeAmount}
                 onChange={(e) => {
@@ -208,13 +217,13 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
                   const numValue = value === '' ? 0 : Number(value);
                   setPrizeAmount(numValue);
                 }}
-                placeholder="10"
+                placeholder="0"
                 className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={loading || imageGenerating}
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              This amount will be deducted from your wallet and awarded to whoever solves the challenge.
+              Optional: Set to $0 for no prize, or add money to incentivize players. You pay this upfront.
             </p>
           </div>
 

@@ -100,7 +100,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
                 title="Click to add credits"
               >
                 <Wallet className="w-4 h-4 text-green-600" />
-                <span className="text-green-800 font-medium" data-wallet-amount>${wallet}</span>
+                <span className="text-green-800 font-medium" data-wallet-amount>${(wallet / 100).toFixed(2)}</span>
               </a>
 
               <div className="flex items-center space-x-2">

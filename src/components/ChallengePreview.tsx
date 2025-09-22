@@ -100,9 +100,9 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow flex flex-col h-full">
       {/* Preview Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             <Eye className="w-4 h-4 text-blue-600" />
@@ -141,9 +141,9 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
         </div>
       </div>
 
-      {/* Action Section */}
-      <div className="p-4 bg-gray-50">
-        <div className="flex items-center justify-between">
+      {/* Action Section - Now fills remaining space */}
+      <div className="p-4 bg-gray-50 flex-grow flex items-center">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-2">
             <Trophy className="w-4 h-4 text-green-600" />
             <span className="text-sm font-medium text-green-900">Prize: ${challenge.prizeAmount}</span>

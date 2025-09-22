@@ -3,6 +3,7 @@ import { readChallenges, writeChallenges, generateId } from '@/lib/data';
 import { Challenge } from '@/lib/types';
 import { canAffordCredits, burnUserCredits } from '@/lib/stackauth-credits';
 import { sanitizeChallengeForClient, getUserDisplayInfo } from '@/lib/challenge-utils';
+import { rateLimitChallengeCreation } from '@/lib/rate-limiter';
 
 
 export async function GET(request: NextRequest) {
@@ -11,9 +12,14 @@ export async function GET(request: NextRequest) {
     // Try to get userId from headers for personalized word visibility
     const userId = request.headers.get('x-user-id');
     
+    // Sort challenges by creation date (most recent first)
+    const sortedChallenges = challenges.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
     // Enrich challenges with creator display information
     const enrichedChallenges = await Promise.all(
-      challenges.map(async (challenge) => {
+      sortedChallenges.map(async (challenge) => {
         const creatorInfo = await getUserDisplayInfo(challenge.createdBy);
         return {
           ...challenge,
@@ -34,27 +40,42 @@ export async function POST(request: NextRequest) {
   try {
     const { sentence, createdBy, prizeAmount } = await request.json();
     
-    if (!sentence || !createdBy || !prizeAmount) {
+    if (!sentence || !createdBy || prizeAmount === undefined || prizeAmount === null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Check rate limits
+    const rateLimitResult = await rateLimitChallengeCreation(createdBy);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json({ 
+        error: rateLimitResult.error,
+        rateLimited: true,
+        minuteRemaining: rateLimitResult.minuteRemaining,
+        dayRemaining: rateLimitResult.dayRemaining
+      }, { status: 429 }); // 429 Too Many Requests
     }
 
     if (sentence.split(' ').length > 25) {
       return NextResponse.json({ error: 'Sentence too long (max 25 words)' }, { status: 400 });
     }
 
-    if (prizeAmount < 1) {
-      return NextResponse.json({ error: 'Prize amount must be at least $1' }, { status: 400 });
+    if (prizeAmount < 0) {
+      return NextResponse.json({ error: 'Prize amount cannot be negative' }, { status: 400 });
     }
 
-    // Check if creator can afford the prize
-    if (!(await canAffordCredits(createdBy, prizeAmount))) {
-      return NextResponse.json({ error: 'Insufficient credits to create this challenge' }, { status: 400 });
-    }
+    // Check if creator can afford the prize (only if prize > 0)
+    // Convert prize amount from dollars to cents for credit system
+    const prizeAmountCents = Math.round(prizeAmount * 100);
+    if (prizeAmount > 0) {
+      if (!(await canAffordCredits(createdBy, prizeAmountCents))) {
+        return NextResponse.json({ error: 'Insufficient credits to create this challenge' }, { status: 400 });
+      }
 
-    // Deduct prize amount from creator's credits upfront
-    const success = await burnUserCredits(createdBy, prizeAmount);
-    if (!success) {
-      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
+      // Deduct prize amount from creator's credits upfront
+      const success = await burnUserCredits(createdBy, prizeAmountCents);
+      if (!success) {
+        return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
+      }
     }
 
     // Parse words and identify purchasable ones

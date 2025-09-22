@@ -17,8 +17,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Word Reveal Game",
-  description: "A competitive word-guessing game where users buy temporary access to reveal hidden words in AI-generated images",
+  title: "Banana Guesser 🍌",
+  description: "A competitive word-guessing game where users guess the prompt behind AI-generated images.",
 };
 
 export default function RootLayout({
