@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { readChallenges } from '@/lib/data';
-import { sanitizeChallengeForClient } from '@/lib/challenge-utils';
+import { sanitizeChallengeForClient, getUserDisplayInfo } from '@/lib/challenge-utils';
 
 interface ChallengePageProps {
   params: Promise<{
@@ -22,7 +22,13 @@ async function getChallenge(id: string) {
       return null;
     }
 
-    return challenge; // Return full challenge data for server-side, client will handle sanitization
+    // Enrich challenge with creator display information
+    const creatorInfo = await getUserDisplayInfo(challenge.createdBy);
+    return {
+      ...challenge,
+      createdByDisplayName: creatorInfo?.displayName || 'Anonymous User',
+      createdByProfileImage: creatorInfo?.profileImageUrl || null
+    };
   } catch (error) {
     console.error('Failed to fetch challenge:', error);
     return null;
@@ -120,7 +126,7 @@ export default async function ChallengePage({ params }: ChallengePageProps) {
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <ChallengePageClient
-          challenge={sanitizeChallengeForClient(challenge)}
+          challenge={sanitizeChallengeForClient(challenge, user.id)}
           currentUserId={user.id}
           initialWallet={wallet}
         />

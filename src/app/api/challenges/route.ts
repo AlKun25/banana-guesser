@@ -2,13 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges, generateId } from '@/lib/data';
 import { Challenge } from '@/lib/types';
 import { canAffordCredits, burnUserCredits } from '@/lib/stackauth-credits';
-import { sanitizeChallengeForClient } from '@/lib/challenge-utils';
+import { sanitizeChallengeForClient, getUserDisplayInfo } from '@/lib/challenge-utils';
 
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const challenges = await readChallenges();
-    const sanitizedChallenges = challenges.map(challenge => sanitizeChallengeForClient(challenge));
+    // Try to get userId from headers for personalized word visibility
+    const userId = request.headers.get('x-user-id');
+    
+    // Enrich challenges with creator display information
+    const enrichedChallenges = await Promise.all(
+      challenges.map(async (challenge) => {
+        const creatorInfo = await getUserDisplayInfo(challenge.createdBy);
+        return {
+          ...challenge,
+          createdByDisplayName: creatorInfo?.displayName || 'Anonymous User',
+          createdByProfileImage: creatorInfo?.profileImageUrl || null
+        };
+      })
+    );
+    
+    const sanitizedChallenges = enrichedChallenges.map(challenge => sanitizeChallengeForClient(challenge, userId || undefined));
     return NextResponse.json(sanitizedChallenges);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch challenges' }, { status: 500 });

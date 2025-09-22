@@ -16,6 +16,8 @@ export interface Challenge {
     guessedBy?: Record<string, boolean>; // userId -> true if correctly guessed
   }>;
   createdBy: string;
+  createdByDisplayName?: string; // Display name of challenger
+  createdByProfileImage?: string | null; // Profile image of challenger
   solvedBy: string | null;
   isActive: boolean;
   createdAt: Date;

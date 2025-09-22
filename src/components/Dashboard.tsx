@@ -23,7 +23,11 @@ export function Dashboard() {
       setRefreshing(true);
     }
     try {
-      const response = await fetch('/api/challenges');
+      const response = await fetch('/api/challenges', {
+        headers: user?.id ? {
+          'x-user-id': user.id
+        } : {}
+      });
       const data = await response.json();
       setChallenges(data);
     } catch (error) {

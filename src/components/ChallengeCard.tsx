@@ -261,9 +261,9 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
     if (purchasedWord || word.isPurchased || word.isGenerating || word.imageReady || word.generationFailed) {
       const userGuessedCorrectly = word.guessedBy?.[currentUserId];
       
-      // If user already guessed correctly, show blue (completed)
+      // If user already guessed correctly, show green (completed)
       if (userGuessedCorrectly) {
-        return "bg-blue-500 text-blue-100 px-2 py-1 rounded cursor-default";
+        return "bg-green-500 text-green-100 px-2 py-1 rounded cursor-default";
       }
       
       if (purchasedWord) {
@@ -271,18 +271,18 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
           // Yellow while generating image
           return "bg-yellow-400 text-yellow-900 px-2 py-1 rounded animate-pulse cursor-text";
         } else if (word.imageReady) {
-          // Green when image is ready (clickable to guess)
-          return "bg-green-500 text-green-900 px-2 py-1 rounded cursor-text hover:bg-green-600 transition-colors";
+          // Blue when image is ready (clickable to guess)
+          return "bg-blue-500 text-blue-900 px-2 py-1 rounded cursor-text hover:bg-blue-600 transition-colors";
         } else if (word.generationFailed) {
-          // Green with red accent for failed generation (still clickable to guess)
-          return "bg-green-400 text-green-900 px-2 py-1 rounded border-2 border-red-400 cursor-text hover:bg-green-500 transition-colors";
+          // Blue with red accent for failed generation (still clickable to guess)
+          return "bg-blue-400 text-blue-900 px-2 py-1 rounded border-2 border-red-400 cursor-text hover:bg-blue-500 transition-colors";
         } else {
-          // Default green for purchased (clickable to guess)
-          return "bg-green-400 text-green-900 px-2 py-1 rounded cursor-text hover:bg-green-500 transition-colors";
+          // Default blue for purchased (clickable to guess)
+          return "bg-blue-400 text-blue-900 px-2 py-1 rounded cursor-text hover:bg-blue-500 transition-colors";
         }
       } else {
-        // Green for any other purchased/unlocked state (clickable to guess)
-        return "bg-green-400 text-green-900 px-2 py-1 rounded cursor-text hover:bg-green-500 transition-colors";
+        // Blue for any other purchased/unlocked state (clickable to guess)
+        return "bg-blue-400 text-blue-900 px-2 py-1 rounded cursor-text hover:bg-blue-500 transition-colors";
       }
     }
     
@@ -321,7 +321,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
           key={index} 
           className="relative inline-block"
         >
-          <span className="bg-blue-500 text-blue-100 px-2 py-1 rounded cursor-default" style={{ minHeight: '2.25rem', display: 'inline-flex', alignItems: 'center' }}>
+          <span className="bg-green-500 text-green-100 px-2 py-1 rounded cursor-default" style={{ minHeight: '2.25rem', display: 'inline-flex', alignItems: 'center' }}>
             {word.text}
           </span>
         </span>
@@ -349,9 +349,10 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
 
     // Regular word display with unlock button
     const isUnlocked = word.isPurchased || purchasedWord || word.isGenerating || word.imageReady || word.generationFailed;
-    const displayText = isUnlocked 
-      ? (purchasedWord ? '*'.repeat(purchasedWord.wordLength) : '*'.repeat(word.text.length))
-      : '*'.repeat(word.text.length);
+    
+    // Use the sanitized word text directly - it's already been processed by the API
+    // to show full text for correctly guessed words or purchased words
+    const displayText = word.text;
 
     return (
       <span 
@@ -460,7 +461,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <Eye className="w-5 h-5 text-blue-600" />
-            <span className="text-sm text-gray-600">Challenge #{challenge.id.slice(0, 8)}</span>
+            <span className="text-sm text-gray-600">Challenge by {challenge.createdByDisplayName || 'Anonymous User'}</span>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1 text-sm text-gray-500">
@@ -519,8 +520,8 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
             <li>• Click any word to type your guess (Enter to submit, Esc to cancel)</li>
             <li>• Hover words to see unlock button 🔓 - click to buy hint image ($5)</li>
             <li>• Yellow asterisks = generating hint image</li>
-            <li>• Green asterisks = hint ready! Hover to preview image</li>
-            <li>• Blue words = correctly guessed</li>
+            <li>• Blue asterisks = hint ready! Hover to preview image</li>
+            <li>• Green words = correctly guessed</li>
             <li>• Guess all words to win the full prize!</li>
           </ul>
         </div>

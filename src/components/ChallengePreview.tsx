@@ -18,9 +18,9 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
   const getWordPreviewClass = (word: any) => {
     const userGuessedCorrectly = isWordGuessedByUser(word);
     
-    // If user already guessed correctly, show blue (completed)
+    // If user already guessed correctly, show green (completed)
     if (userGuessedCorrectly) {
-      return "bg-blue-500 text-blue-100 px-2 py-1 rounded";
+      return "bg-green-500 text-green-100 px-2 py-1 rounded";
     }
     
     // Show colors for purchased/unlocked words
@@ -29,11 +29,11 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
         // Yellow while generating image
         return "bg-yellow-400 text-yellow-900 px-2 py-1 rounded";
       } else if (word.imageReady || word.generationFailed) {
-        // Green when image is ready or failed (still purchasable)
-        return "bg-green-500 text-green-100 px-2 py-1 rounded";
+        // Blue when image is ready or failed (still purchasable)
+        return "bg-blue-500 text-blue-100 px-2 py-1 rounded";
       } else {
-        // Default green for purchased
-        return "bg-green-400 text-green-900 px-2 py-1 rounded";
+        // Default blue for purchased
+        return "bg-blue-400 text-blue-900 px-2 py-1 rounded";
       }
     }
     
@@ -106,7 +106,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             <Eye className="w-4 h-4 text-blue-600" />
-            <span className="text-sm text-gray-600">#{challenge.id.slice(0, 8)}</span>
+            <span className="text-sm text-gray-600">by {challenge.createdByDisplayName || 'Anonymous User'}</span>
           </div>
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-1 text-xs text-gray-500">
