@@ -151,12 +151,12 @@ export function Dashboard() {
             
             <div className="flex items-center space-x-4">
               <a 
-                href="/payments"
+                href="/credits"
                 className="flex items-center space-x-2 bg-green-100 px-3 py-1 rounded-full hover:bg-green-200 transition-colors cursor-pointer"
-                title="Click to add credits"
+                title="View credits and refill status"
               >
                 <Wallet className="w-4 h-4 text-green-600" />
-                <span className="text-green-800 font-medium">${(wallet / 100).toFixed(2)}</span>
+                <span className="text-green-800 font-medium">{wallet} GC</span>
               </a>
               
               <div className="flex items-center space-x-2">

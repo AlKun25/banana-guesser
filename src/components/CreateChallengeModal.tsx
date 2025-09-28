@@ -204,7 +204,7 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
               Prize Amount (optional - you pay upfront)
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">GC</span>
               <input
                 id="prizeAmount"
                 type="number"
@@ -223,7 +223,8 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Optional: Set to $0 for no prize, or add money to incentivize players. You pay this upfront.
+              Optional: Set to 0 for no prize, or add GC to incentivize players. You pay this upfront.
+              Word unlock cost will be: Prize Amount ÷ Number of Words (minimum 1 GC)
             </p>
           </div>
 
@@ -253,7 +254,7 @@ export function CreateChallengeModal({ onClose, onChallengeCreated, userId }: Cr
                 <ul className="space-y-1">
                   <li>• AI will generate an image representing your sentence</li>
                   <li>• Some words will be hidden for players to purchase</li>
-                  <li>• Players pay $5 for 20-second exclusive word access</li>
+                  <li>• Players pay (Prize ÷ Words) GC for exclusive word access</li>
                   <li>• First to guess the complete sentence wins!</li>
                 </ul>
               </div>

@@ -9,7 +9,13 @@ fal.config({
   credentials: process.env.FAL_KEY,
 });
 
-const WORD_PRICE_CENTS = 2; // 2 cents per word
+// Dynamic pricing: (prize amount / number of words) with minimum 1 GC
+function calculateWordPrice(challenge: any): number {
+  const basePrice = challenge.prizeAmount > 0 
+    ? Math.max(1, Math.floor(challenge.prizeAmount / challenge.words.length))
+    : 1; // Minimum 1 GC for challenges with no prize
+  return basePrice;
+}
 
 // Background function to generate image for purchased word
 async function generateWordImage(challengeId: string, wordIndex: number, modifiedPrompt: string) {
@@ -84,11 +90,6 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if user can afford the word
-    if (!(await canAffordCredits(userId, WORD_PRICE_CENTS))) {
-      return NextResponse.json({ error: 'Insufficient credits' }, { status: 400 });
-    }
-
     const challenges = await readChallenges();
     const challengeIndex = challenges.findIndex(c => c.id === id);
     
@@ -97,6 +98,16 @@ export async function POST(
     }
 
     const challenge = challenges[challengeIndex];
+    const wordPrice = calculateWordPrice(challenge);
+    
+    // Check if user can afford the word
+    if (!(await canAffordCredits(userId, wordPrice))) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits',
+        required: wordPrice,
+        wordPrice
+      }, { status: 400 });
+    }
     
     if (wordIndex >= challenge.words.length) {
       return NextResponse.json({ error: 'Invalid word index' }, { status: 400 });
@@ -123,7 +134,7 @@ export async function POST(
     }
 
     // Process the purchase
-    const success = await burnUserCredits(userId, WORD_PRICE_CENTS);
+    const success = await burnUserCredits(userId, wordPrice);
     if (!success) {
       return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
     }
@@ -159,7 +170,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       wordLength: word.text.length,
-      cost: WORD_PRICE_CENTS / 100, // Convert cents to dollars for display
+      cost: wordPrice, // Cost in GC
       status: 'generating'
     });
 

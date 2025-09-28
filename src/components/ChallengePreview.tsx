@@ -146,7 +146,7 @@ export function ChallengePreview({ challenge, currentUserId }: ChallengePreviewP
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-2">
             <Trophy className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-medium text-green-900">Prize: ${challenge.prizeAmount}</span>
+            <span className="text-sm font-medium text-green-900">Prize: {challenge.prizeAmount} GC</span>
           </div>
           <Link
             href={`/challenge/${challenge.id}`}

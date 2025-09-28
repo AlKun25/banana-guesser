@@ -23,9 +23,8 @@ export async function POST(
 
     const challenge = challenges[challengeIndex];
     
-    if (challenge.solvedBy) {
-      return NextResponse.json({ error: 'Challenge already solved' }, { status: 400 });
-    }
+    // Check if challenge was already solved - for messaging/reward purposes
+    const wasAlreadySolved = challenge.solvedBy !== null;
 
     if (wordIndex >= challenge.words.length) {
       return NextResponse.json({ error: 'Invalid word index' }, { status: 400 });
@@ -63,15 +62,19 @@ export async function POST(
       let totalReward = 0;
 
       if (allWordsGuessed) {
-        // User solved the entire challenge - award the full prize
-        challenge.solvedBy = userId;
-        challenge.isActive = false;
-        totalReward = challenge.prizeAmount;
-        message = `🎉 Congratulations! You solved the entire challenge! You won $${totalReward}!`;
-        
-        // Award the prize to the winner (convert dollars to cents for credit system)
-        const prizeAmountCents = Math.round(totalReward * 100);
-        await addUserCredits(userId, prizeAmountCents);
+        if (wasAlreadySolved) {
+          // Challenge was already solved by someone else - no reward
+          message = `🎉 Congratulations! You solved the entire challenge! Unfortunately, you won't receive any reward as you weren't the first solver of this challenge.`;
+        } else {
+          // User is the first to solve the entire challenge - award the full prize
+          challenge.solvedBy = userId;
+          challenge.isActive = false;
+          totalReward = challenge.prizeAmount;
+          message = `🎉 Congratulations! You solved the entire challenge! You won ${totalReward} GC!`;
+          
+          // Award the prize to the winner
+          await addUserCredits(userId, totalReward);
+        }
       }
 
       await writeChallenges(challenges);

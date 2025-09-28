@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readChallenges, writeChallenges } from '@/lib/data';
-import { updateUserWallet } from '@/lib/wallet';
+import { addUserCredits } from '@/lib/stackauth-credits';
 
-const WINNING_REWARD = 50; // $50 for solving a challenge
+const WINNING_REWARD = 50; // 50 GC for solving a challenge
 
 export async function POST(
   request: NextRequest,
@@ -25,9 +25,8 @@ export async function POST(
 
     const challenge = challenges[challengeIndex];
     
-    if (challenge.solvedBy) {
-      return NextResponse.json({ error: 'Challenge already solved' }, { status: 400 });
-    }
+    // Check if challenge was already solved - for messaging/reward purposes
+    const wasAlreadySolved = challenge.solvedBy !== null;
 
     // Normalize both strings for comparison
     const normalizeText = (text: string) => 
@@ -39,24 +38,34 @@ export async function POST(
     const isCorrect = normalizedGuess === normalizedSentence;
 
     if (isCorrect) {
-      // Mark challenge as solved
-      challenge.solvedBy = userId;
-      challenge.isActive = false;
+      let message: string;
+      let reward = 0;
       
-      // Make all words visible
-      challenge.words.forEach(word => {
-        word.isPurchased = true;
-      });
+      if (wasAlreadySolved) {
+        // Challenge already solved - no reward
+        message = 'Congratulations! You got the right answer! Unfortunately, you won\'t receive any reward as you weren\'t the first solver of this challenge.';
+      } else {
+        // First time being solved - award prize and mark as solved
+        challenge.solvedBy = userId;
+        challenge.isActive = false;
+        reward = WINNING_REWARD;
+        message = 'Congratulations! You solved the challenge!';
+        
+        // Make all words visible
+        challenge.words.forEach(word => {
+          word.isPurchased = true;
+        });
+
+        // Reward the solver
+        await addUserCredits(userId, WINNING_REWARD);
+      }
 
       await writeChallenges(challenges);
 
-      // Reward the solver
-      await updateUserWallet(userId, WINNING_REWARD);
-
       return NextResponse.json({
         correct: true,
-        message: 'Congratulations! You solved the challenge!',
-        reward: WINNING_REWARD,
+        message,
+        reward,
         solution: challenge.sentence
       });
     } else {

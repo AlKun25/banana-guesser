@@ -106,10 +106,15 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
       return;
     }
 
+    // Calculate dynamic pricing
+    const wordPrice = challenge.prizeAmount > 0 
+      ? Math.max(1, Math.floor(challenge.prizeAmount / challenge.words.length))
+      : 1;
+
     // Show confirmation popup for mobile-friendly purchasing
     const confirmed = window.confirm(
       `Purchase hint for word ${wordIndex + 1}?\n\n` +
-      `Cost: $0.02\n` +
+      `Cost: ${wordPrice} GC\n` +
       `This will generate an image after removing this word from the prompt.`
     );
     
@@ -143,7 +148,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
         wordLength: data.wordLength,
       }]);
 
-      showToast(`Word unlocked! Generating hint image... Cost: $${data.cost}`, 'success');
+      showToast(`Word unlocked! Generating hint image... Cost: ${data.cost} GC`, 'success');
       onWalletUpdate();
 
       // Poll for image generation completion
@@ -397,7 +402,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
                 handleUnlockWord(index);
               }}
               className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 transition-colors z-10"
-              title="Unlock word hint ($0.02)"
+              title={`Unlock word hint (${challenge.prizeAmount > 0 ? Math.max(1, Math.floor(challenge.prizeAmount / challenge.words.length)) : 1} GC)`}
             >
               🔓
             </button>
@@ -459,7 +464,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
               handleUnlockWord(index);
             }}
             className="absolute -top-8 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-blue-500 text-white rounded-full text-xs hover:bg-blue-600 transition-colors z-10"
-            title="Unlock word hint ($0.02)"
+            title={`Unlock word hint (${challenge.prizeAmount > 0 ? Math.max(1, Math.floor(challenge.prizeAmount / challenge.words.length)) : 1} GC)`}
           >
             🔓
           </button>
@@ -649,7 +654,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
                 <Trophy className="w-5 h-5 text-green-600" />
                 <h4 className="font-medium text-green-900">Challenge Prize</h4>
               </div>
-              <div className="text-2xl font-bold text-green-700">${challenge.prizeAmount}</div>
+              <div className="text-2xl font-bold text-green-700">{challenge.prizeAmount} GC</div>
             </div>
             <p className="text-sm text-green-600 mt-1">
               Winner takes all! Solve all the words to claim the prize.
@@ -672,7 +677,7 @@ export function ChallengeCard({ challenge, currentUserId, onWalletUpdate, onChal
           <h4 className="font-medium text-blue-900 mb-2">How to Play:</h4>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Click any word to type your guess (Enter to submit, Esc to cancel)</li>
-            <li>• Click unlock button 🔓 to buy a hint for $0.02, that is an image generated without that word</li>
+            <li>• Click unlock button 🔓 to buy a hint for {challenge.prizeAmount > 0 ? Math.max(1, Math.floor(challenge.prizeAmount / challenge.words.length)) : 1} GC, that is an image generated without that word</li>
             <li>• Yellow asterisks = generating hint image</li>
             <li>• Blue asterisks = hint ready! Click 👁️ button to preview image</li>
             <li>• Green words = correctly guessed</li>

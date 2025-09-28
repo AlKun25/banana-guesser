@@ -64,15 +64,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if creator can afford the prize (only if prize > 0)
-    // Convert prize amount from dollars to cents for credit system
-    const prizeAmountCents = Math.round(prizeAmount * 100);
     if (prizeAmount > 0) {
-      if (!(await canAffordCredits(createdBy, prizeAmountCents))) {
+      if (!(await canAffordCredits(createdBy, prizeAmount))) {
         return NextResponse.json({ error: 'Insufficient credits to create this challenge' }, { status: 400 });
       }
 
       // Deduct prize amount from creator's credits upfront
-      const success = await burnUserCredits(createdBy, prizeAmountCents);
+      const success = await burnUserCredits(createdBy, prizeAmount);
       if (!success) {
         return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 400 });
       }

@@ -41,7 +41,7 @@ export function ChallengePageClient({
   useEffect(() => {
     const walletElement = document.querySelector('[data-wallet-amount]');
     if (walletElement) {
-      walletElement.textContent = `$${wallet}`;
+      walletElement.textContent = `${wallet} GC`;
     }
   }, [wallet]);
 
